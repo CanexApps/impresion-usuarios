@@ -52,6 +52,64 @@
             --input-bg: #f8fafc;
         }
 
+        /* ── Pantalla de bienvenida (efecto máquina de escribir) ──────── */
+        #splashBienvenida {
+            position: fixed;
+            inset: 0;
+            z-index: 20000;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            transition: opacity 0.5s ease;
+        }
+        #splashBienvenida.oculto {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .splash-contenido {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .splash-impresora {
+            font-size: 2.6rem;
+            line-height: 1;
+            position: relative;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
+        }
+        #splashPapel {
+            width: 46px;
+            height: 0;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            transition: height 0.25s ease;
+        }
+        #splashTexto {
+            font-style: italic;
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: #e2e8f0;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.5;
+            margin-top: 14px;
+            min-height: 2.6em;
+        }
+        #splashCursor {
+            font-style: normal;
+            color: #6366f1;
+            animation: splashParpadeo 0.8s step-end infinite;
+        }
+        @keyframes splashParpadeo {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-main);
@@ -1382,6 +1440,14 @@
     </style>
 </head>
 <body>
+
+<!-- Pantalla de bienvenida con efecto de máquina de escribir -->
+<div id="splashBienvenida">
+    <div class="splash-contenido">
+        <div class="splash-impresora">🖨️<div id="splashPapel"></div></div>
+        <div id="splashTexto"><span id="splashTextoTyped"></span><span id="splashCursor">|</span></div>
+    </div>
+</div>
 
 <!-- Overlay premio -->
 <div id="premioOverlay">
@@ -2935,19 +3001,21 @@
 
             // Si lo que acaba de llegar es una transferencia de otro cliente
             // (y no crédito ganado por pedidos), lo anunciamos mencionando
-            // quién se lo envió, en vez del mensaje genérico.
+            // quién se lo envió y cuánto, en vez del mensaje genérico.
             let remitenteTransferencia = null;
+            let montoRecibidoTransferencia = 0;
             if (esNuevo) {
                 const ultimoMov = (cliente.historial && cliente.historial.length) ? cliente.historial[cliente.historial.length - 1] : null;
                 if (ultimoMov && ultimoMov.motivo && ultimoMov.motivo.indexOf('Transferencia recibida de ') === 0 && ultimoMov.saldo === credito) {
                     const match = ultimoMov.motivo.match(/^Transferencia recibida de (.+?) \(/);
                     remitenteTransferencia = match ? match[1] : 'otro cliente';
+                    montoRecibidoTransferencia = ultimoMov.monto || 0;
                 }
             }
 
             banner.className = 'banner-credito-disponible';
             if (remitenteTransferencia) {
-                banner.innerHTML = `<span class="emoji-regalo-anim">💸</span> <b>¡${remitenteTransferencia} te transfirió crédito!</b> Ahora tenés ₡<b><span id="creditoNumeroAnimado">${formatColones(desdeAnimacion)}</span></b> disponible.`;
+                banner.innerHTML = `<span class="emoji-regalo-anim">💸</span> <b>¡${remitenteTransferencia} te transfirió ₡${formatColones(montoRecibidoTransferencia)} de crédito!</b> Ahora tenés ₡<b><span id="creditoNumeroAnimado">${formatColones(desdeAnimacion)}</span></b> disponible en total.`;
             } else {
                 banner.innerHTML = `<span class="emoji-regalo-anim">🎁</span> Tienes <b>₡<span id="creditoNumeroAnimado">${formatColones(desdeAnimacion)}</span></b> de crédito disponible. Se aplica automáticamente al pagar.`;
             }
@@ -3579,6 +3647,86 @@
     }
 
     // ── INIT ─────────────────────────────────────────────────────
+    // Pantalla de bienvenida: escribe la frase letra por letra, la borra,
+    // y desaparece para dejar ver la app. No bloquea el resto de la carga.
+    // Sonido sutil (una sola nota, más suave que el de "transferencia
+    // exitosa") para cuando termina de escribirse el saludo de bienvenida.
+    function splashSonido() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 987.77; // Si5, nota suave y corta
+            const t0 = ctx.currentTime;
+            gain.gain.setValueAtTime(0, t0);
+            gain.gain.linearRampToValueAtTime(0.06, t0 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t0);
+            osc.stop(t0 + 0.4);
+        } catch (e) {}
+    }
+
+    function ejecutarSplashBienvenida() {
+        const elTyped = document.getElementById('splashTextoTyped');
+        const elSplash = document.getElementById('splashBienvenida');
+        const elPapel = document.getElementById('splashPapel');
+        if (!elTyped || !elSplash) return;
+
+        // Saludo personalizado si ya reconocemos al cliente en este navegador
+        const nombreGuardado = (localStorage.getItem('miCentroImpresion_nombreCliente') || '').trim();
+        const primerNombre = nombreGuardado.split(' ')[0];
+        const fraseSaludo = primerNombre ? `Bienvenido de nuevo, ${primerNombre} 👋` : 'Bienvenido a Mi Centro de Impresiones';
+
+        const frases = [
+            fraseSaludo,
+            'Cotización al instante 📄',
+            'Tu crédito, siempre a mano 💳'
+        ];
+
+        let indiceFrase = 0;
+        let i = 0;
+        const velocidadEscribir = 50;
+        const velocidadBorrar = 26;
+        const pausaAntesDeBorrar = 750;
+        const pausaEntreFrases = 180;
+        const alturaMaximaPapel = 30;
+
+        function escribir() {
+            const frase = frases[indiceFrase];
+            if (i <= frase.length) {
+                elTyped.textContent = frase.slice(0, i);
+                elPapel.style.height = Math.round((i / frase.length) * alturaMaximaPapel) + 'px';
+                i++;
+                setTimeout(escribir, velocidadEscribir);
+            } else {
+                if (indiceFrase === 0) splashSonido();
+                setTimeout(borrar, pausaAntesDeBorrar);
+            }
+        }
+        function borrar() {
+            const frase = frases[indiceFrase];
+            if (i > 0) {
+                i--;
+                elTyped.textContent = frase.slice(0, i);
+                elPapel.style.height = Math.round((i / frase.length) * alturaMaximaPapel) + 'px';
+                setTimeout(borrar, velocidadBorrar);
+            } else if (indiceFrase < frases.length - 1) {
+                indiceFrase++;
+                setTimeout(escribir, pausaEntreFrases);
+            } else {
+                elSplash.classList.add('oculto');
+                setTimeout(() => { elSplash.style.display = 'none'; }, 550);
+            }
+        }
+        escribir();
+    }
+    ejecutarSplashBienvenida();
+
     window.addEventListener('DOMContentLoaded', async function() {
         const nombreGuardado = localStorage.getItem('miCentroImpresion_nombreCliente');
         const telefonoGuardado = localStorage.getItem('miCentroImpresion_telefonoCliente');
