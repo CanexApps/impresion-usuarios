@@ -32,6 +32,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         if (window['pdfjsLib']) {
             window['pdfjsLib'].GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -291,6 +292,28 @@
         .ai-upload-zone:active {
             transform: scale(0.98);
             background: #eef2f7;
+        }
+
+        .btn-escanear-cedula {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            color: #334155;
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: -8px 0 18px 0;
+            transition: all 0.15s ease;
+        }
+        .btn-escanear-cedula:active {
+            transform: translateY(1px);
+            background: #f1f5f9;
         }
 
         .ai-status {
@@ -1059,6 +1082,99 @@
             background: #e0e7ff;
         }
 
+        /* ===== Escaneo de cédula (frente / reverso) ===== */
+        .cedula-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10002;
+            background: #0f172a;
+            flex-direction: column;
+        }
+        .cedula-overlay.visible { display: flex; }
+
+        .cedula-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            flex-shrink: 0;
+        }
+        .cedula-steps { display: flex; gap: 6px; }
+        .cedula-step-dot { width: 22px; height: 4px; border-radius: 999px; background: rgba(255,255,255,0.25); transition: background 0.2s ease; }
+        .cedula-step-dot.activo { background: #818cf8; }
+        .cedula-step-dot.hecho { background: #4f46e5; }
+        .cedula-btn-cerrar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); border: none; color: #fff;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .cedula-camara-wrap {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #000;
+        }
+        #cedulaVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .cedula-marco {
+            position: absolute;
+            width: 82%;
+            aspect-ratio: 85.6 / 53.98;
+            border: 2.5px solid #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 0 2000px rgba(0,0,0,0.55);
+            pointer-events: none;
+        }
+        .cedula-preview-img {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        .cedula-bottom {
+            padding: 18px 22px 26px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .cedula-instruccion {
+            color: #fff;
+            font-size: 0.92rem;
+            font-weight: 600;
+            margin: 0 0 18px 0;
+            line-height: 1.4;
+        }
+        .cedula-controles { display: flex; justify-content: center; }
+        .cedula-btn-disparo {
+            width: 66px; height: 66px;
+            border-radius: 50%;
+            background: #fff;
+            border: 4px solid rgba(255,255,255,0.35);
+            cursor: pointer;
+            padding: 0;
+        }
+        .cedula-btn-disparo:active { background: #e2e8f0; }
+        .cedula-controles-preview {
+            display: flex;
+            gap: 12px;
+        }
+        .cedula-controles-preview .tc-btn-secundario,
+        .cedula-controles-preview .btn-exito {
+            flex: 1;
+            height: 50px;
+        }
+
         #transferOverlay {
             display: none;
             position: fixed;
@@ -1678,9 +1794,40 @@
     </div>
 </div>
 
+<!-- Escaneo de cédula: cámara con marco guía, tipo CamScanner -->
+<div id="cedulaOverlay" class="cedula-overlay">
+    <div class="cedula-top">
+        <div class="cedula-steps"><span class="cedula-step-dot" id="cedulaDot1"></span><span class="cedula-step-dot" id="cedulaDot2"></span></div>
+        <button type="button" class="cedula-btn-cerrar" onclick="cerrarEscaneoCedula()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+    </div>
+
+    <div class="cedula-camara-wrap" id="cedulaCamaraWrap">
+        <video id="cedulaVideo" autoplay playsinline muted></video>
+        <div class="cedula-marco" id="cedulaMarco"></div>
+    </div>
+
+    <img id="cedulaPreviewImg" class="cedula-preview-img" style="display:none;">
+
+    <div class="cedula-bottom">
+        <p class="cedula-instruccion" id="cedulaInstruccion">Colocá el FRENTE de tu cédula dentro del marco</p>
+
+        <div id="cedulaControlesCamara" class="cedula-controles">
+            <button type="button" class="cedula-btn-disparo" onclick="capturarCedula()" aria-label="Tomar foto"></button>
+        </div>
+
+        <div id="cedulaControlesPreview" class="cedula-controles-preview" style="display:none;">
+            <button type="button" class="tc-btn-secundario" onclick="cedulaRetomar()">Retomar</button>
+            <button type="button" class="btn-exito" id="cedulaBtnContinuar" onclick="cedulaContinuar()">Continuar</button>
+        </div>
+    </div>
+</div>
+
 <!-- Recorrido guiado: oscurece la pantalla y resalta un elemento a la vez -->
 <div id="recorridoOverlay"></div>
 <div id="recorridoCard" class="recorrido-card" style="display:none;"></div>
+
 
 <div id="loaderGlobal" class="loading-overlay">
     <div class="spinner"></div>
@@ -1775,6 +1922,11 @@
             <input type="file" id="archivoDocumento" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display: none;" multiple onchange="analizarArchivosMasivos(event)">
             <div id="statusIA" class="ai-status"></div>
         </div>
+
+        <button type="button" class="btn-escanear-cedula" onclick="abrirEscaneoCedula()">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path stroke-linecap="round" d="M13 10h5M13 14h3"/></svg>
+            Escanear cédula (frente y reverso)
+        </button>
 
         <!-- Lista de archivos cargados -->
         <div id="listaArchivosPanel" style="display:none; margin-bottom: 14px;">
@@ -3979,6 +4131,173 @@
         envoltura.appendChild(etiqueta);
         galeria.appendChild(envoltura);
         document.getElementById('vistaPreviaContenedor').style.display = "block";
+    }
+
+    // ===================================================================
+    // ESCANEO DE CÉDULA (frente y reverso, estilo CamScanner)
+    // Toma dos fotos guiadas con un marco del tamaño real de una cédula
+    // costarricense (formato ID-1, 85.6 x 53.98 mm), las recorta al marco
+    // automáticamente, y arma un PDF de una sola página (frente arriba,
+    // reverso abajo, a escala real) que se agrega al mismo sistema de
+    // carga de documentos que ya usa la app — nunca se sube como imagen.
+    // ===================================================================
+    let _cedulaStream = null;
+    let _cedulaPaso = 'frente'; // 'frente' | 'reverso'
+    let _cedulaFrenteDataURL = null;
+    let _cedulaReversoDataURL = null;
+
+    async function abrirEscaneoCedula() {
+        _cedulaPaso = 'frente';
+        _cedulaFrenteDataURL = null;
+        _cedulaReversoDataURL = null;
+        cedulaActualizarPasoUI();
+
+        document.getElementById('cedulaOverlay').classList.add('visible');
+        await cedulaIniciarCamara();
+    }
+
+    async function cedulaIniciarCamara() {
+        cedulaMostrarVistaCamara();
+        try {
+            _cedulaStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                audio: false
+            });
+            const video = document.getElementById('cedulaVideo');
+            video.srcObject = _cedulaStream;
+        } catch (e) {
+            console.error('No se pudo acceder a la cámara:', e);
+            mostrarAviso('No se pudo acceder a la cámara. Revisá los permisos del navegador e intentá de nuevo.', '📷');
+            cerrarEscaneoCedula();
+        }
+    }
+
+    function cedulaDetenerCamara() {
+        if (_cedulaStream) {
+            _cedulaStream.getTracks().forEach(t => t.stop());
+            _cedulaStream = null;
+        }
+    }
+
+    function cedulaActualizarPasoUI() {
+        const esFrente = _cedulaPaso === 'frente';
+        document.getElementById('cedulaInstruccion').textContent = esFrente
+            ? 'Colocá el FRENTE de tu cédula dentro del marco'
+            : 'Dale vuelta a tu cédula y colocá el REVERSO dentro del marco';
+        document.getElementById('cedulaDot1').className = 'cedula-step-dot' + (esFrente ? ' activo' : ' hecho');
+        document.getElementById('cedulaDot2').className = 'cedula-step-dot' + (esFrente ? '' : ' activo');
+    }
+
+    function cedulaMostrarVistaCamara() {
+        document.getElementById('cedulaCamaraWrap').style.display = 'flex';
+        document.getElementById('cedulaPreviewImg').style.display = 'none';
+        document.getElementById('cedulaControlesCamara').style.display = 'flex';
+        document.getElementById('cedulaControlesPreview').style.display = 'none';
+    }
+
+    function cedulaMostrarVistaPreview(dataURL) {
+        const img = document.getElementById('cedulaPreviewImg');
+        img.src = dataURL;
+        document.getElementById('cedulaCamaraWrap').style.display = 'none';
+        img.style.display = 'block';
+        document.getElementById('cedulaControlesCamara').style.display = 'none';
+        document.getElementById('cedulaControlesPreview').style.display = 'flex';
+        document.getElementById('cedulaBtnContinuar').textContent = (_cedulaPaso === 'frente') ? 'Usar esta foto' : 'Finalizar';
+    }
+
+    // Recorta el frame actual del video exactamente al área del marco guía,
+    // usando la geometría real del <video> (object-fit: cover) para que el
+    // recorte coincida en píxeles con lo que el usuario ve en pantalla.
+    function capturarCedula() {
+        const video = document.getElementById('cedulaVideo');
+        const wrap = document.getElementById('cedulaCamaraWrap');
+        const marco = document.getElementById('cedulaMarco');
+        if (!video.videoWidth || !video.videoHeight) return;
+
+        const wrapRect = wrap.getBoundingClientRect();
+        const marcoRect = marco.getBoundingClientRect();
+
+        const escala = Math.max(wrapRect.width / video.videoWidth, wrapRect.height / video.videoHeight);
+        const anchoMostrado = video.videoWidth * escala;
+        const altoMostrado = video.videoHeight * escala;
+        const offsetX = (anchoMostrado - wrapRect.width) / 2;
+        const offsetY = (altoMostrado - wrapRect.height) / 2;
+
+        const nativoX = ((marcoRect.left - wrapRect.left) + offsetX) / escala;
+        const nativoY = ((marcoRect.top - wrapRect.top) + offsetY) / escala;
+        const nativoAncho = marcoRect.width / escala;
+        const nativoAlto = marcoRect.height / escala;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(nativoAncho);
+        canvas.height = Math.round(nativoAlto);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, nativoX, nativoY, nativoAncho, nativoAlto, 0, 0, canvas.width, canvas.height);
+
+        const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+        cedulaMostrarVistaPreview(dataURL);
+    }
+
+    function cedulaRetomar() {
+        cedulaIniciarCamara();
+    }
+
+    async function cedulaContinuar() {
+        const img = document.getElementById('cedulaPreviewImg');
+        if (_cedulaPaso === 'frente') {
+            _cedulaFrenteDataURL = img.src;
+            _cedulaPaso = 'reverso';
+            cedulaActualizarPasoUI();
+            await cedulaIniciarCamara();
+        } else {
+            _cedulaReversoDataURL = img.src;
+            await cedulaFinalizarEscaneo();
+        }
+    }
+
+    // Arma el PDF final (frente y reverso a tamaño real, en una sola hoja
+    // carta) y lo agrega al mismo input de documentos que usa el resto de
+    // la app, sin borrar los archivos que el cliente ya haya seleccionado.
+    async function cedulaFinalizarEscaneo() {
+        cedulaDetenerCamara();
+        document.getElementById('cedulaOverlay').classList.remove('visible');
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'letter' });
+            const anchoPagina = doc.internal.pageSize.getWidth();
+            const anchoCard = 85.6, altoCard = 53.98;
+            const x = (anchoPagina - anchoCard) / 2;
+
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text('Frente', x, 32);
+            doc.addImage(_cedulaFrenteDataURL, 'JPEG', x, 35, anchoCard, altoCard);
+
+            doc.text('Reverso', x, 105);
+            doc.addImage(_cedulaReversoDataURL, 'JPEG', x, 108, anchoCard, altoCard);
+
+            const blob = doc.output('blob');
+            const nombreArchivo = `Cedula_${Date.now()}.pdf`;
+            const archivoPDF = new File([blob], nombreArchivo, { type: 'application/pdf' });
+
+            const inputArchivo = document.getElementById('archivoDocumento');
+            const dt = new DataTransfer();
+            _archivosSeleccionados.forEach(f => dt.items.add(f));
+            dt.items.add(archivoPDF);
+            inputArchivo.files = dt.files;
+
+            await analizarArchivosMasivos({ target: inputArchivo });
+            mostrarAviso('¡Listo! Tu cédula quedó lista para imprimir.', '🪪');
+        } catch (e) {
+            console.error('Error generando el PDF de la cédula:', e);
+            mostrarAviso('No se pudo generar el archivo de la cédula. Probá de nuevo.', '📷');
+        }
+    }
+
+    function cerrarEscaneoCedula() {
+        cedulaDetenerCamara();
+        document.getElementById('cedulaOverlay').classList.remove('visible');
     }
 
     async function analizarArchivosMasivos(event) {
