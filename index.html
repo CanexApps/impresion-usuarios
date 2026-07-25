@@ -1143,6 +1143,28 @@
             background: #000;
         }
 
+        .cedula-flip-screen {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            box-sizing: border-box;
+            animation: fadeInOverlay 0.25s ease;
+        }
+        .cedula-flip-screen svg { animation: cedulaFlipPop 0.5s cubic-bezier(.26,1.55,.44,1) both; }
+        @keyframes cedulaFlipPop {
+            0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .cedula-flip-titulo { color: #fff; font-size: 1.15rem; font-weight: 700; margin: 18px 0 6px; }
+        .cedula-flip-sub { color: #cbd5e1; font-size: 0.88rem; line-height: 1.5; margin: 0 0 26px; max-width: 300px; }
+        .cedula-flip-screen .btn-exito { width: 100%; max-width: 320px; height: 52px; }
+
         .cedula-bottom {
             padding: 18px 22px 26px;
             flex-shrink: 0;
@@ -1810,7 +1832,20 @@
 
     <img id="cedulaPreviewImg" class="cedula-preview-img" style="display:none;">
 
-    <div class="cedula-bottom">
+    <div id="cedulaFlipScreen" class="cedula-flip-screen" style="display:none;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.6">
+            <rect x="3" y="6" width="18" height="12" rx="2"/>
+            <circle cx="8" cy="12" r="1.6" fill="#818cf8" stroke="none"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 12h6"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 3a9 9 0 0 1 2 5.5M4 21a9 9 0 0 1-2-5.5"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M22 8.5h-3.5V5M2 15.5h3.5V19"/>
+        </svg>
+        <p class="cedula-flip-titulo">¡Frente lista!</p>
+        <p class="cedula-flip-sub">Volteá tu cédula y colocá el REVERSO mirando hacia la cámara</p>
+        <button type="button" class="btn-exito" onclick="cedulaMostrarCamaraReverso()">Ya la volteé, continuar</button>
+    </div>
+
+    <div class="cedula-bottom" id="cedulaBottom">
         <p class="cedula-instruccion" id="cedulaInstruccion">Colocá el FRENTE de tu cédula dentro del marco</p>
 
         <div id="cedulaControlesCamara" class="cedula-controles">
@@ -4191,6 +4226,8 @@
     function cedulaMostrarVistaCamara() {
         document.getElementById('cedulaCamaraWrap').style.display = 'flex';
         document.getElementById('cedulaPreviewImg').style.display = 'none';
+        document.getElementById('cedulaFlipScreen').style.display = 'none';
+        document.getElementById('cedulaBottom').style.display = 'block';
         document.getElementById('cedulaControlesCamara').style.display = 'flex';
         document.getElementById('cedulaControlesPreview').style.display = 'none';
     }
@@ -4199,15 +4236,100 @@
         const img = document.getElementById('cedulaPreviewImg');
         img.src = dataURL;
         document.getElementById('cedulaCamaraWrap').style.display = 'none';
+        document.getElementById('cedulaFlipScreen').style.display = 'none';
+        document.getElementById('cedulaBottom').style.display = 'block';
         img.style.display = 'block';
         document.getElementById('cedulaControlesCamara').style.display = 'none';
         document.getElementById('cedulaControlesPreview').style.display = 'flex';
         document.getElementById('cedulaBtnContinuar').textContent = (_cedulaPaso === 'frente') ? 'Usar esta foto' : 'Finalizar';
     }
 
+    // Pantalla intermedia entre el frente y el reverso: le muestra al
+    // cliente un ícono de "volteá la cédula" en vez de solo texto, para
+    // que quede clarísimo qué tiene que hacer antes de la segunda foto.
+    function cedulaMostrarPantallaFlip() {
+        document.getElementById('cedulaCamaraWrap').style.display = 'none';
+        document.getElementById('cedulaPreviewImg').style.display = 'none';
+        document.getElementById('cedulaBottom').style.display = 'none';
+        document.getElementById('cedulaFlipScreen').style.display = 'flex';
+    }
+
+    function cedulaMostrarCamaraReverso() {
+        cedulaIniciarCamara();
+    }
+
+    // Ajuste fino automático: dentro del recorte del marco guía, detecta
+    // el color de fondo (mirando las esquinas) y recorta un poco más hacia
+    // adentro hasta encontrar el borde real de la cédula, para que no quede
+    // fondo/mesa alrededor. Si no logra detectar un borde confiable, no
+    // toca nada (mejor dejar un poquito de margen que cortar la cédula).
+    function cedulaAutoRecortar(canvasOrigen) {
+        const w = canvasOrigen.width, h = canvasOrigen.height;
+        let datos;
+        try {
+            datos = canvasOrigen.getContext('2d').getImageData(0, 0, w, h).data;
+        } catch (e) {
+            return canvasOrigen;
+        }
+        const idx = (x, y) => (y * w + x) * 4;
+
+        const m = Math.max(2, Math.round(Math.min(w, h) * 0.04));
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let dx = 0; dx < m; dx++) {
+            for (let dy = 0; dy < m; dy++) {
+                [[dx, dy], [w - 1 - dx, dy], [dx, h - 1 - dy], [w - 1 - dx, h - 1 - dy]].forEach(([x, y]) => {
+                    const i = idx(x, y);
+                    r += datos[i]; g += datos[i + 1]; b += datos[i + 2]; n++;
+                });
+            }
+        }
+        r /= n; g /= n; b /= n;
+
+        const distancia = (x, y) => {
+            const i = idx(x, y);
+            const dr = datos[i] - r, dg = datos[i + 1] - g, db = datos[i + 2] - b;
+            return Math.sqrt(dr * dr + dg * dg + db * db);
+        };
+
+        const UMBRAL = 42, PASO = 2, PROPORCION_MIN = 0.35, LIMITE_BUSQUEDA = 0.42;
+        const filaDistinta = (y) => {
+            let distintos = 0, total = 0;
+            for (let x = 0; x < w; x += PASO) { total++; if (distancia(x, y) > UMBRAL) distintos++; }
+            return (distintos / total) > PROPORCION_MIN;
+        };
+        const colDistinta = (x) => {
+            let distintos = 0, total = 0;
+            for (let y = 0; y < h; y += PASO) { total++; if (distancia(x, y) > UMBRAL) distintos++; }
+            return (distintos / total) > PROPORCION_MIN;
+        };
+
+        let y1 = 0; for (let y = 0; y < h * LIMITE_BUSQUEDA; y++) { if (filaDistinta(y)) { y1 = y; break; } }
+        let y2 = h - 1; for (let y = h - 1; y > h * (1 - LIMITE_BUSQUEDA); y--) { if (filaDistinta(y)) { y2 = y; break; } }
+        let x1 = 0; for (let x = 0; x < w * LIMITE_BUSQUEDA; x++) { if (colDistinta(x)) { x1 = x; break; } }
+        let x2 = w - 1; for (let x = w - 1; x > w * (1 - LIMITE_BUSQUEDA); x--) { if (colDistinta(x)) { x2 = x; break; } }
+
+        const margen = Math.round(Math.min(w, h) * 0.015);
+        x1 = Math.max(0, x1 - margen);
+        y1 = Math.max(0, y1 - margen);
+        x2 = Math.min(w - 1, x2 + margen);
+        y2 = Math.min(h - 1, y2 + margen);
+
+        const nuevoAncho = x2 - x1, nuevoAlto = y2 - y1;
+        if (nuevoAncho < w * 0.5 || nuevoAlto < h * 0.5 || nuevoAncho <= 0 || nuevoAlto <= 0) {
+            return canvasOrigen;
+        }
+
+        const recortado = document.createElement('canvas');
+        recortado.width = nuevoAncho;
+        recortado.height = nuevoAlto;
+        recortado.getContext('2d').drawImage(canvasOrigen, x1, y1, nuevoAncho, nuevoAlto, 0, 0, nuevoAncho, nuevoAlto);
+        return recortado;
+    }
+
     // Recorta el frame actual del video exactamente al área del marco guía,
     // usando la geometría real del <video> (object-fit: cover) para que el
-    // recorte coincida en píxeles con lo que el usuario ve en pantalla.
+    // recorte coincida en píxeles con lo que el usuario ve en pantalla, y
+    // luego ajusta ese recorte al borde real de la cédula.
     function capturarCedula() {
         const video = document.getElementById('cedulaVideo');
         const wrap = document.getElementById('cedulaCamaraWrap');
@@ -4234,7 +4356,8 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, nativoX, nativoY, nativoAncho, nativoAlto, 0, 0, canvas.width, canvas.height);
 
-        const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+        const canvasFinal = cedulaAutoRecortar(canvas);
+        const dataURL = canvasFinal.toDataURL('image/jpeg', 0.92);
         cedulaMostrarVistaPreview(dataURL);
     }
 
@@ -4248,7 +4371,7 @@
             _cedulaFrenteDataURL = img.src;
             _cedulaPaso = 'reverso';
             cedulaActualizarPasoUI();
-            await cedulaIniciarCamara();
+            cedulaMostrarPantallaFlip();
         } else {
             _cedulaReversoDataURL = img.src;
             await cedulaFinalizarEscaneo();
