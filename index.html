@@ -34,12 +34,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-        window._cvListo = false;
-    </script>
-    <script async src="https://docs.opencv.org/4.8.0/opencv.js"
-        onload="if (window.cv) { cv['onRuntimeInitialized'] = () => { window._cvListo = true; }; }"
-        onerror="window._cvListo = false;"></script>
-    <script>
         if (window['pdfjsLib']) {
             window['pdfjsLib'].GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
         }
@@ -4188,6 +4182,7 @@
     // contorno confiable, recorta al centro con la proporción correcta.
     // ===================================================================
     let _cedulaStream = null;
+    let _cedulaImageCapture = null; // API nativa del navegador para tomar una FOTO real (no un frame de video), cuando el celular la soporta
     let _cedulaPaso = 'frente'; // 'frente' | 'reverso'
     let _cedulaFrenteDataURL = null;
     let _cedulaReversoDataURL = null;
@@ -4220,6 +4215,18 @@
             });
             const video = document.getElementById('cedulaVideo');
             video.srcObject = _cedulaStream;
+
+            // Si el navegador soporta ImageCapture, la usamos para tomar
+            // la FOTO real de la cédula (resolución y enfoque del sensor,
+            // igual que la app de cámara), en vez de un frame del video
+            // en vivo (que siempre sale más borroso). Si no está
+            // disponible, se sigue usando el frame de video como antes.
+            try {
+                const track = _cedulaStream.getVideoTracks()[0];
+                _cedulaImageCapture = (window.ImageCapture && track) ? new ImageCapture(track) : null;
+            } catch (e) {
+                _cedulaImageCapture = null;
+            }
         } catch (e) {
             console.error('No se pudo acceder a la cámara:', e);
             mostrarAviso('No se pudo acceder a la cámara. Revisá los permisos del navegador e intentá de nuevo.', '📷');
@@ -4232,6 +4239,7 @@
             _cedulaStream.getTracks().forEach(t => t.stop());
             _cedulaStream = null;
         }
+        _cedulaImageCapture = null;
     }
 
     function cedulaActualizarPasoUI() {
@@ -4277,13 +4285,14 @@
         }, 1150);
     }
 
-    // Recorta el frame actual del video. Toma el área exacta del marco
-    // guía y también un área un poco más amplia alrededor (por si el
-    // cliente no alineó perfecto), y busca los bordes reales de la cédula
-    // en esa área ampliada. Usa la geometría real del <video>
-    // (object-fit: cover) para que el recorte coincida en píxeles con lo
-    // que se ve en pantalla.
-    function capturarCedula() {
+    // Toma la foto: si el navegador soporta ImageCapture, pide una FOTO
+    // real (nítida, resolución del sensor); si no, usa el frame actual
+    // del video en vivo como respaldo. Recorta el área del marco guía y
+    // también un área más amplia alrededor (por si el cliente no alineó
+    // perfecto) para buscarle los bordes reales a la cédula ahí dentro.
+    // Usa la geometría real del <video> (object-fit: cover) para que el
+    // recorte coincida en píxeles con lo que se ve en pantalla.
+    async function capturarCedula() {
         if (_cedulaAnimando) return;
         const video = document.getElementById('cedulaVideo');
         const wrap = document.getElementById('cedulaCamaraWrap');
@@ -4299,32 +4308,53 @@
         const offsetX = (anchoMostrado - wrapRect.width) / 2;
         const offsetY = (altoMostrado - wrapRect.height) / 2;
 
-        const nativoX = ((marcoRect.left - wrapRect.left) + offsetX) / escala;
-        const nativoY = ((marcoRect.top - wrapRect.top) + offsetY) / escala;
-        const nativoAncho = marcoRect.width / escala;
-        const nativoAlto = marcoRect.height / escala;
+        // Coordenadas del marco en el espacio nativo del VIDEO
+        let nativoX = ((marcoRect.left - wrapRect.left) + offsetX) / escala;
+        let nativoY = ((marcoRect.top - wrapRect.top) + offsetY) / escala;
+        let nativoAncho = marcoRect.width / escala;
+        let nativoAlto = marcoRect.height / escala;
+
+        let fuente = video; // respaldo: frame actual del video en vivo
+        let fuenteAncho = video.videoWidth, fuenteAlto = video.videoHeight;
+
+        if (_cedulaImageCapture) {
+            try {
+                const blob = await _cedulaImageCapture.takePhoto();
+                const bitmap = await createImageBitmap(blob);
+                // La foto real puede tener otra resolución que el video en
+                // vivo (normalmente mayor); reescalamos el marco a su tamaño.
+                const factorX = bitmap.width / video.videoWidth;
+                const factorY = bitmap.height / video.videoHeight;
+                nativoX *= factorX; nativoAncho *= factorX;
+                nativoY *= factorY; nativoAlto *= factorY;
+                fuente = bitmap;
+                fuenteAncho = bitmap.width; fuenteAlto = bitmap.height;
+            } catch (e) {
+                console.warn('No se pudo tomar foto nítida (takePhoto), se usa el frame de video:', e);
+            }
+        }
 
         // Recorte exacto al marco (respaldo si la detección de bordes falla)
         const canvasMarco = document.createElement('canvas');
         canvasMarco.width = Math.round(nativoAncho);
         canvasMarco.height = Math.round(nativoAlto);
-        canvasMarco.getContext('2d').drawImage(video, nativoX, nativoY, nativoAncho, nativoAlto, 0, 0, canvasMarco.width, canvasMarco.height);
+        canvasMarco.getContext('2d').drawImage(fuente, nativoX, nativoY, nativoAncho, nativoAlto, 0, 0, canvasMarco.width, canvasMarco.height);
 
         // Área ampliada (35% extra por lado) para darle margen a la detección de bordes
         const margenX = nativoAncho * 0.35, margenY = nativoAlto * 0.35;
         const ampX = Math.max(0, nativoX - margenX);
         const ampY = Math.max(0, nativoY - margenY);
-        const ampAncho = Math.min(video.videoWidth - ampX, nativoAncho + margenX * 2);
-        const ampAlto = Math.min(video.videoHeight - ampY, nativoAlto + margenY * 2);
+        const ampAncho = Math.min(fuenteAncho - ampX, nativoAncho + margenX * 2);
+        const ampAlto = Math.min(fuenteAlto - ampY, nativoAlto + margenY * 2);
 
         const canvasAmplio = document.createElement('canvas');
         canvasAmplio.width = Math.round(ampAncho);
         canvasAmplio.height = Math.round(ampAlto);
-        canvasAmplio.getContext('2d').drawImage(video, ampX, ampY, ampAncho, ampAlto, 0, 0, canvasAmplio.width, canvasAmplio.height);
+        canvasAmplio.getContext('2d').drawImage(fuente, ampX, ampY, ampAncho, ampAlto, 0, 0, canvasAmplio.width, canvasAmplio.height);
 
         const canvasDetectado = cedulaDetectarBordes(canvasAmplio);
         const canvasFinal = canvasDetectado || canvasMarco;
-        const dataURL = canvasFinal.toDataURL('image/jpeg', 0.92);
+        const dataURL = canvasFinal.toDataURL('image/jpeg', 0.94);
 
         if (_cedulaPaso === 'frente') {
             // Sin pantalla de confirmación: guarda, avisa con la animación
@@ -4339,142 +4369,82 @@
         }
     }
 
-    // Busca los 4 bordes reales de la cédula dentro de la imagen (usando
-    // OpenCV.js). Preprocesa con filtro que preserva bordes, detecta
-    // contornos externos, y prueba varios niveles de simplificación hasta
-    // encontrar un contorno de 4 lados. Si ningún contorno da exactamente
-    // 4 lados pero sí hay uno grande y claro, usa su rectángulo mínimo
-    // rotado como aproximación (esto sube muchísimo la tasa de acierto
-    // comparado con exigir siempre 4 esquinas perfectas). El recorte final
-    // se hace sobre la imagen a resolución completa y el tamaño de salida
-    // se calcula a partir de los bordes medidos (nunca se agranda la
-    // imagen, para que no salga borrosa). Si no hay nada que se parezca a
-    // una cédula, devuelve null.
+    // Busca los 4 bordes de la cédula usando un "perfil de contraste": por
+    // cada columna suma cuánto cambia el brillo verticalmente (detecta
+    // líneas verticales fuertes = bordes izquierdo/derecho), y por cada
+    // fila suma cuánto cambia horizontalmente (detecta bordes
+    // arriba/abajo). El borde real de la cédula es, casi siempre, la
+    // transición de brillo más fuerte de toda la zona buscada — así que
+    // no depende de ninguna librería externa ni de que algo termine de
+    // cargar por internet, corre al instante con lo que ya está en el
+    // celular. Si los picos encontrados no son claramente más fuertes que
+    // el promedio (imagen sin bordes claros), no arriesga nada y devuelve
+    // null para usar el recorte del marco guía como respaldo.
     function cedulaDetectarBordes(canvasOrigen) {
-        if (!window._cvListo || typeof cv === 'undefined' || !cv.Mat) return null;
-        let src, small, gray, suavizado, edges, contours, hierarchy;
-        const candidatos = [];
         try {
-            src = cv.imread(canvasOrigen);
+            const w = canvasOrigen.width, h = canvasOrigen.height;
+            if (w < 20 || h < 20) return null;
+            const ctx = canvasOrigen.getContext('2d');
+            const datos = ctx.getImageData(0, 0, w, h).data;
 
-            const escalaDeteccion = Math.min(1, 900 / Math.max(src.cols, src.rows));
-            small = new cv.Mat();
-            cv.resize(src, small, new cv.Size(0, 0), escalaDeteccion, escalaDeteccion, cv.INTER_AREA);
+            const paso = Math.max(1, Math.round(Math.max(w, h) / 500)); // reduce para que sea rápido en celulares
+            const aG = Math.floor(w / paso), altoG = Math.floor(h / paso);
+            if (aG < 10 || altoG < 10) return null;
 
-            gray = new cv.Mat();
-            cv.cvtColor(small, gray, cv.COLOR_RGBA2GRAY);
-            suavizado = new cv.Mat();
-            cv.bilateralFilter(gray, suavizado, 9, 60, 60);
-
-            edges = new cv.Mat();
-            cv.Canny(suavizado, edges, 40, 120);
-            const kernel = cv.Mat.ones(5, 5, cv.CV_8U);
-            cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 2);
-            kernel.delete();
-
-            contours = new cv.MatVector();
-            hierarchy = new cv.Mat();
-            cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-            for (let i = 0; i < contours.size(); i++) {
-                const cnt = contours.get(i);
-                candidatos.push({ cnt, area: cv.contourArea(cnt) });
-            }
-            candidatos.sort((a, b) => b.area - a.area);
-
-            const areaTotal = small.rows * small.cols;
-            const umbralArea = areaTotal * 0.15;
-            let puntos = null;
-
-            for (const { cnt, area } of candidatos.slice(0, 8)) {
-                if (area < umbralArea) break;
-                const peri = cv.arcLength(cnt, true);
-                for (const factor of [0.01, 0.02, 0.03, 0.05]) {
-                    const approx = new cv.Mat();
-                    cv.approxPolyDP(cnt, approx, factor * peri, true);
-                    if (approx.rows === 4 && cv.isContourConvex(approx)) {
-                        puntos = [];
-                        for (let k = 0; k < 4; k++) puntos.push({ x: approx.intPtr(k, 0)[0], y: approx.intPtr(k, 0)[1] });
-                        approx.delete();
-                        break;
-                    }
-                    approx.delete();
+            const gris = new Float32Array(aG * altoG);
+            for (let y = 0; y < altoG; y++) {
+                for (let x = 0; x < aG; x++) {
+                    const i = ((y * paso) * w + (x * paso)) * 4;
+                    gris[y * aG + x] = 0.299 * datos[i] + 0.587 * datos[i + 1] + 0.114 * datos[i + 2];
                 }
-                if (puntos) break;
             }
 
-            if (!puntos && candidatos.length && candidatos[0].area >= umbralArea) {
-                const rect = cv.minAreaRect(candidatos[0].cnt);
-                puntos = cedulaPuntosDeRectanguloRotado(rect);
+            const perfilCol = new Float64Array(aG);
+            const perfilFila = new Float64Array(altoG);
+            for (let y = 1; y < altoG - 1; y++) {
+                for (let x = 1; x < aG - 1; x++) {
+                    const gx = Math.abs(gris[y * aG + (x + 1)] - gris[y * aG + (x - 1)]);
+                    const gy = Math.abs(gris[(y + 1) * aG + x] - gris[(y - 1) * aG + x]);
+                    perfilCol[x] += gy; // cambios verticales de brillo a lo largo de la columna -> borde vertical
+                    perfilFila[y] += gx; // cambios horizontales de brillo a lo largo de la fila -> borde horizontal
+                }
             }
 
-            if (!puntos) return null;
+            const pico = (perfil, desde, hasta) => {
+                let mejorI = -1, mejorV = -1;
+                for (let i = desde; i < hasta; i++) {
+                    if (perfil[i] > mejorV) { mejorV = perfil[i]; mejorI = i; }
+                }
+                return { indice: mejorI, valor: mejorV };
+            };
+            const promedio = (perfil) => perfil.reduce((a, b) => a + b, 0) / perfil.length;
 
-            // Escalamos las coordenadas encontradas en la copia reducida
-            // de vuelta a la resolución original de la foto.
-            const pts = puntos.map(p => ({ x: p.x / escalaDeteccion, y: p.y / escalaDeteccion }));
-            pts.sort((a, b) => a.y - b.y);
-            const arriba = pts.slice(0, 2).sort((a, b) => a.x - b.x);
-            const abajo = pts.slice(2, 4).sort((a, b) => a.x - b.x);
-            const [tl, tr] = arriba, [bl, br] = abajo;
+            const margenBusqueda = 0.38, bordeExterno = 0.02;
+            const izq = pico(perfilCol, Math.floor(aG * bordeExterno), Math.floor(aG * margenBusqueda));
+            const der = pico(perfilCol, Math.floor(aG * (1 - margenBusqueda)), Math.floor(aG * (1 - bordeExterno)));
+            const arr = pico(perfilFila, Math.floor(altoG * bordeExterno), Math.floor(altoG * margenBusqueda));
+            const aba = pico(perfilFila, Math.floor(altoG * (1 - margenBusqueda)), Math.floor(altoG * (1 - bordeExterno)));
 
-            // Tamaño de salida basado en los bordes medidos de verdad, sin
-            // agrandar la imagen, para que el recorte salga tan nítido
-            // como la foto original.
-            const anchoMedido = Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y));
-            const altoMedido = Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y));
-            const proporcionCedula = 85.6 / 53.98;
-            let anchoSalida = Math.round(anchoMedido);
-            let altoSalida = Math.round(anchoSalida / proporcionCedula);
-            if (Math.abs((anchoMedido / altoMedido) - proporcionCedula) > Math.abs((altoMedido * proporcionCedula / anchoMedido) - 1)) {
-                altoSalida = Math.round(altoMedido);
-                anchoSalida = Math.round(altoSalida * proporcionCedula);
-            }
-            anchoSalida = Math.max(anchoSalida, 500);
-            altoSalida = Math.max(Math.round(anchoSalida / proporcionCedula), 315);
+            const promCol = promedio(perfilCol), promFila = promedio(perfilFila);
+            const UMBRAL = 2.2; // el pico debe ser bastante más fuerte que el promedio para confiar en él
+            if (izq.indice < 0 || der.indice < 0 || arr.indice < 0 || aba.indice < 0) return null;
+            if (izq.valor < promCol * UMBRAL || der.valor < promCol * UMBRAL) return null;
+            if (arr.valor < promFila * UMBRAL || aba.valor < promFila * UMBRAL) return null;
 
-            const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
-            const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, anchoSalida, 0, anchoSalida, altoSalida, 0, altoSalida]);
-            const M = cv.getPerspectiveTransform(srcTri, dstTri);
-            const dst = new cv.Mat();
-            cv.warpPerspective(src, dst, M, new cv.Size(anchoSalida, altoSalida));
+            const x1 = izq.indice * paso, x2 = der.indice * paso;
+            const y1 = arr.indice * paso, y2 = aba.indice * paso;
+            const anchoRecorte = x2 - x1, altoRecorte = y2 - y1;
+            if (anchoRecorte < w * 0.3 || altoRecorte < h * 0.3) return null;
 
-            const canvasOut = document.createElement('canvas');
-            canvasOut.width = anchoSalida;
-            canvasOut.height = altoSalida;
-            cv.imshow(canvasOut, dst);
-
-            srcTri.delete(); dstTri.delete(); M.delete(); dst.delete();
-            return canvasOut;
+            const out = document.createElement('canvas');
+            out.width = Math.round(anchoRecorte);
+            out.height = Math.round(altoRecorte);
+            out.getContext('2d').drawImage(canvasOrigen, x1, y1, anchoRecorte, altoRecorte, 0, 0, out.width, out.height);
+            return out;
         } catch (e) {
             console.error('Detección de bordes falló, se usa el recorte del marco:', e);
             return null;
-        } finally {
-            candidatos.forEach(c => c.cnt.delete());
-            if (src) src.delete();
-            if (small) small.delete();
-            if (gray) gray.delete();
-            if (suavizado) suavizado.delete();
-            if (edges) edges.delete();
-            if (contours) contours.delete();
-            if (hierarchy) hierarchy.delete();
         }
-    }
-
-    // Calcula las 4 esquinas de un rectángulo rotado (resultado de
-    // cv.minAreaRect), igual que RotatedRect::points() en OpenCV nativo.
-    function cedulaPuntosDeRectanguloRotado(rect) {
-        const anguloRad = rect.angle * Math.PI / 180;
-        const b = Math.cos(anguloRad) * 0.5;
-        const a = Math.sin(anguloRad) * 0.5;
-        const cx = rect.center.x, cy = rect.center.y;
-        const w = rect.size.width, h = rect.size.height;
-        return [
-            { x: cx - a * h - b * w, y: cy + b * h - a * w },
-            { x: cx + a * h - b * w, y: cy - b * h - a * w },
-            { x: cx + a * h + b * w, y: cy - b * h + a * w },
-            { x: cx - a * h + b * w, y: cy + b * h + a * w }
-        ];
     }
 
     function cedulaRetomar() {
