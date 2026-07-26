@@ -1854,6 +1854,24 @@
     </div>
 </div>
 
+<!-- Ajuste manual del recorte: solo aparece si la detección automática no encontró el borde -->
+<div id="cedulaAjusteOverlay" style="display:none; position:fixed; inset:0; background:#000; z-index:9999; flex-direction:column;">
+    <div style="padding:14px 16px; text-align:center; color:#fff; font-weight:700; background:#1e293b; font-size:0.95rem;">
+        No pudimos recortar automático — arrastrá las esquinas verdes hasta los bordes de tu cédula
+    </div>
+    <div id="cedulaAjusteLienzo" style="position:relative; flex:1; display:flex; align-items:center; justify-content:center; overflow:hidden; touch-action:none;">
+        <img id="cedulaAjusteImg" style="max-width:100%; max-height:100%; display:block; user-select:none; pointer-events:none;">
+        <div id="cedulaAjusteRect" style="position:absolute; border:3px solid #22c55e; box-shadow:0 0 0 9999px rgba(0,0,0,0.55); pointer-events:none;"></div>
+        <div class="cedula-ajuste-handle" data-esquina="tl" style="position:absolute; width:30px; height:30px; margin-left:-15px; margin-top:-15px; background:#22c55e; border-radius:50%; border:3px solid #fff; touch-action:none;"></div>
+        <div class="cedula-ajuste-handle" data-esquina="tr" style="position:absolute; width:30px; height:30px; margin-left:-15px; margin-top:-15px; background:#22c55e; border-radius:50%; border:3px solid #fff; touch-action:none;"></div>
+        <div class="cedula-ajuste-handle" data-esquina="bl" style="position:absolute; width:30px; height:30px; margin-left:-15px; margin-top:-15px; background:#22c55e; border-radius:50%; border:3px solid #fff; touch-action:none;"></div>
+        <div class="cedula-ajuste-handle" data-esquina="br" style="position:absolute; width:30px; height:30px; margin-left:-15px; margin-top:-15px; background:#22c55e; border-radius:50%; border:3px solid #fff; touch-action:none;"></div>
+    </div>
+    <div style="padding:14px 16px; background:#1e293b;">
+        <button type="button" onclick="cedulaConfirmarAjuste()" style="width:100%; padding:14px; border-radius:10px; border:none; background:#22c55e; color:#fff; font-weight:800; font-size:1rem;">Confirmar recorte</button>
+    </div>
+</div>
+
 <!-- Recorrido guiado: oscurece la pantalla y resalta un elemento a la vez -->
 <div id="recorridoOverlay"></div>
 <div id="recorridoCard" class="recorrido-card" style="display:none;"></div>
@@ -4300,6 +4318,119 @@
         document.getElementById('cedulaControlesPreview').style.display = 'none';
     }
 
+    // --- Ajuste manual del recorte (solo cuando la detección automática falla) ---
+    let _cedulaAjusteEstado = null;
+    let _cedulaHandlesListos = false;
+
+    function cedulaMostrarAjusteManual(canvasAmplio) {
+        cedulaInicializarHandlesAjuste();
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('cedulaAjusteOverlay');
+            const img = document.getElementById('cedulaAjusteImg');
+            img.onload = () => {
+                _cedulaAjusteEstado = {
+                    natW: canvasAmplio.width, natH: canvasAmplio.height,
+                    x: canvasAmplio.width * 0.12, y: canvasAmplio.height * 0.12,
+                    w: canvasAmplio.width * 0.76, h: canvasAmplio.height * 0.76,
+                    resolver: resolve
+                };
+                cedulaActualizarRectAjuste();
+            };
+            img.src = canvasAmplio.toDataURL('image/jpeg', 0.92);
+            overlay.style.display = 'flex';
+        });
+    }
+
+    function cedulaActualizarRectAjuste() {
+        const estado = _cedulaAjusteEstado;
+        if (!estado) return;
+        const img = document.getElementById('cedulaAjusteImg');
+        const lienzo = document.getElementById('cedulaAjusteLienzo');
+        const imgRect = img.getBoundingClientRect();
+        const lienzoRect = lienzo.getBoundingClientRect();
+        const escala = imgRect.width / estado.natW;
+
+        const left = (imgRect.left - lienzoRect.left) + estado.x * escala;
+        const top = (imgRect.top - lienzoRect.top) + estado.y * escala;
+        const w = estado.w * escala;
+        const h = estado.h * escala;
+
+        const rectEl = document.getElementById('cedulaAjusteRect');
+        rectEl.style.left = left + 'px';
+        rectEl.style.top = top + 'px';
+        rectEl.style.width = w + 'px';
+        rectEl.style.height = h + 'px';
+
+        const posiciones = { tl: [left, top], tr: [left + w, top], bl: [left, top + h], br: [left + w, top + h] };
+        document.querySelectorAll('.cedula-ajuste-handle').forEach(handle => {
+            const [hx, hy] = posiciones[handle.dataset.esquina];
+            handle.style.left = hx + 'px';
+            handle.style.top = hy + 'px';
+        });
+
+        estado._escala = escala;
+        estado._imgLeft = imgRect.left;
+        estado._imgTop = imgRect.top;
+    }
+
+    function cedulaInicializarHandlesAjuste() {
+        if (_cedulaHandlesListos) return;
+        _cedulaHandlesListos = true;
+        document.querySelectorAll('.cedula-ajuste-handle').forEach(handle => {
+            handle.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                handle.setPointerCapture(e.pointerId);
+                const esquina = handle.dataset.esquina;
+                const MIN = 40;
+
+                const mover = (ev) => {
+                    const estado = _cedulaAjusteEstado;
+                    if (!estado) return;
+                    const nx = (ev.clientX - estado._imgLeft) / estado._escala;
+                    const ny = (ev.clientY - estado._imgTop) / estado._escala;
+
+                    if (esquina === 'tl') {
+                        const nuevoW = estado.x + estado.w - nx, nuevoH = estado.y + estado.h - ny;
+                        if (nuevoW > MIN) { estado.w = nuevoW; estado.x = nx; }
+                        if (nuevoH > MIN) { estado.h = nuevoH; estado.y = ny; }
+                    } else if (esquina === 'tr') {
+                        const nuevoW = nx - estado.x, nuevoH = estado.y + estado.h - ny;
+                        if (nuevoW > MIN) estado.w = nuevoW;
+                        if (nuevoH > MIN) { estado.h = nuevoH; estado.y = ny; }
+                    } else if (esquina === 'bl') {
+                        const nuevoW = estado.x + estado.w - nx, nuevoH = ny - estado.y;
+                        if (nuevoW > MIN) { estado.w = nuevoW; estado.x = nx; }
+                        if (nuevoH > MIN) estado.h = nuevoH;
+                    } else if (esquina === 'br') {
+                        const nuevoW = nx - estado.x, nuevoH = ny - estado.y;
+                        if (nuevoW > MIN) estado.w = nuevoW;
+                        if (nuevoH > MIN) estado.h = nuevoH;
+                    }
+                    estado.x = Math.max(0, estado.x);
+                    estado.y = Math.max(0, estado.y);
+                    estado.w = Math.min(estado.w, estado.natW - estado.x);
+                    estado.h = Math.min(estado.h, estado.natH - estado.y);
+                    cedulaActualizarRectAjuste();
+                };
+                const soltar = () => {
+                    handle.releasePointerCapture(e.pointerId);
+                    handle.removeEventListener('pointermove', mover);
+                    handle.removeEventListener('pointerup', soltar);
+                };
+                handle.addEventListener('pointermove', mover);
+                handle.addEventListener('pointerup', soltar);
+            });
+        });
+    }
+
+    function cedulaConfirmarAjuste() {
+        const estado = _cedulaAjusteEstado;
+        if (!estado) return;
+        document.getElementById('cedulaAjusteOverlay').style.display = 'none';
+        _cedulaAjusteEstado = null;
+        estado.resolver({ x: estado.x, y: estado.y, w: estado.w, h: estado.h });
+    }
+
     function cedulaMostrarVistaPreview(dataURL, metodoReverso) {
         const img = document.getElementById('cedulaPreviewImg');
         img.src = dataURL;
@@ -4400,9 +4531,26 @@
 
         const cvOK = cedulaDetectarBordesCV(canvasAmplio);
         const perfilOK = cvOK ? null : cedulaDetectarBordes(canvasAmplio);
-        const canvasDetectado = cvOK || perfilOK;
-        const canvasFinal = canvasDetectado || canvasMarco;
-        const metodoUsado = cvOK ? 'OpenCV (contorno real)' : (perfilOK ? 'perfil de contraste' : 'marco guía (respaldo — no se detectó el borde)');
+
+        let canvasFinal, metodoUsado;
+        if (cvOK) {
+            canvasFinal = cvOK;
+            metodoUsado = 'automático (OpenCV)';
+        } else if (perfilOK) {
+            canvasFinal = perfilOK;
+            metodoUsado = 'automático (perfil de contraste)';
+        } else {
+            // La detección automática no encontró el borde (fondo con textura,
+            // poco contraste, etc.) — se le pide al usuario que ajuste el
+            // recorte a mano, en vez de arriesgar un recorte que incluya mesa.
+            const rectManual = await cedulaMostrarAjusteManual(canvasAmplio);
+            const canvasManual = document.createElement('canvas');
+            canvasManual.width = Math.max(1, Math.round(rectManual.w));
+            canvasManual.height = Math.max(1, Math.round(rectManual.h));
+            canvasManual.getContext('2d').drawImage(canvasAmplio, rectManual.x, rectManual.y, rectManual.w, rectManual.h, 0, 0, canvasManual.width, canvasManual.height);
+            canvasFinal = canvasManual;
+            metodoUsado = 'ajuste manual';
+        }
         const dataURL = canvasFinal.toDataURL('image/jpeg', 0.94);
 
         if (_cedulaPaso === 'frente') {
