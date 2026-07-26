@@ -4598,9 +4598,9 @@
             const RATIO_OBJETIVO = 85.6 / 53.98;
             const TOLERANCIA_RATIO = 0.45;
 
-            let rect = cedulaBuscarRectangulo(cedulaMascaraBordes(blurred), areaTotal, RATIO_OBJETIVO, TOLERANCIA_RATIO)
-                || cedulaBuscarRectangulo(cedulaMascaraOtsu(blurred, false), areaTotal, RATIO_OBJETIVO, TOLERANCIA_RATIO)
-                || cedulaBuscarRectangulo(cedulaMascaraOtsu(blurred, true), areaTotal, RATIO_OBJETIVO, TOLERANCIA_RATIO);
+            let rect = cedulaBuscarRectangulo(cedulaMascaraBordes(blurred), src.cols, src.rows, RATIO_OBJETIVO, TOLERANCIA_RATIO)
+                || cedulaBuscarRectangulo(cedulaMascaraOtsu(blurred, false), src.cols, src.rows, RATIO_OBJETIVO, TOLERANCIA_RATIO)
+                || cedulaBuscarRectangulo(cedulaMascaraOtsu(blurred, true), src.cols, src.rows, RATIO_OBJETIVO, TOLERANCIA_RATIO);
 
             if (!rect) return null;
 
@@ -4662,8 +4662,16 @@
     // Recibe una máscara binaria (y la libera al terminar), busca el
     // contorno más grande cuyo rectángulo de mejor ajuste tenga una
     // proporción cercana a la de una cédula real, y devuelve sus 4 esquinas.
-    function cedulaBuscarRectangulo(mascara, areaTotal, ratioObjetivo, tolerancia) {
+    // anchoLienzo/altoLienzo son el tamaño de la foto ampliada: como esa foto
+    // ya se recorta manteniendo la misma proporción que la cédula (se le
+    // agrega el mismo % de margen a cada lado), un bloque que ocupe CASI
+    // toda la foto también "parece" tener la proporción correcta sin ser en
+    // realidad la cédula — por eso se descarta cualquier candidato que
+    // llegue a menos de un 10% de cualquier borde de la foto.
+    function cedulaBuscarRectangulo(mascara, anchoLienzo, altoLienzo, ratioObjetivo, tolerancia) {
         let contours, hierarchy, resultado = null;
+        const areaTotal = anchoLienzo * altoLienzo;
+        const MARGEN_BORDE = 0.10;
         try {
             contours = new cv.MatVector();
             hierarchy = new cv.Mat();
@@ -4673,7 +4681,7 @@
             for (let i = 0; i < contours.size(); i++) {
                 const cnt = contours.get(i);
                 const area = cv.contourArea(cnt);
-                if (area < areaTotal * 0.15 || area > areaTotal * 0.92) { cnt.delete(); continue; }
+                if (area < areaTotal * 0.12 || area > areaTotal * 0.62) { cnt.delete(); continue; }
 
                 const hull = new cv.Mat();
                 cv.convexHull(cnt, hull);
@@ -4685,10 +4693,23 @@
                 const ladoMenor = Math.min(rect.size.width, rect.size.height);
                 if (ladoMenor < 1) continue;
                 const ratio = ladoMayor / ladoMenor;
+                if (Math.abs(ratio - ratioObjetivo) > tolerancia) continue;
 
-                if (Math.abs(ratio - ratioObjetivo) <= tolerancia && area > mejorArea) {
+                // Descartar si toca cerca del borde de la foto ampliada: la
+                // cédula real siempre debería tener aire alrededor, dado el
+                // margen que se agregó al fotografiarla.
+                const puntos = cedulaPuntosDeRectRotado(rect);
+                const minX = Math.min(...puntos.map(p => p.x));
+                const minY = Math.min(...puntos.map(p => p.y));
+                const maxX = Math.max(...puntos.map(p => p.x));
+                const maxY = Math.max(...puntos.map(p => p.y));
+                const tocaBorde = minX < anchoLienzo * MARGEN_BORDE || minY < altoLienzo * MARGEN_BORDE ||
+                    maxX > anchoLienzo * (1 - MARGEN_BORDE) || maxY > altoLienzo * (1 - MARGEN_BORDE);
+                if (tocaBorde) continue;
+
+                if (area > mejorArea) {
                     mejorArea = area;
-                    resultado = { puntos: cedulaPuntosDeRectRotado(rect) };
+                    resultado = { puntos };
                 }
             }
         } catch (e) {
