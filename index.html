@@ -4405,8 +4405,8 @@
                 for (let x = 1; x < aG - 1; x++) {
                     const gx = Math.abs(gris[y * aG + (x + 1)] - gris[y * aG + (x - 1)]);
                     const gy = Math.abs(gris[(y + 1) * aG + x] - gris[(y - 1) * aG + x]);
-                    perfilCol[x] += gy; // cambios verticales de brillo a lo largo de la columna -> borde vertical
-                    perfilFila[y] += gx; // cambios horizontales de brillo a lo largo de la fila -> borde horizontal
+                    perfilCol[x] += gx; // cambio de brillo al cruzar esa columna hacia los lados -> ahí hay un borde vertical (izquierda/derecha)
+                    perfilFila[y] += gy; // cambio de brillo al cruzar esa fila hacia arriba/abajo -> ahí hay un borde horizontal (arriba/abajo)
                 }
             }
 
