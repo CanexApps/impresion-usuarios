@@ -1838,6 +1838,7 @@
     </div>
 
     <img id="cedulaPreviewImg" class="cedula-preview-img" style="display:none;">
+    <div id="cedulaDebugMetodo" style="display:none; text-align:center; font-size:0.75rem; color:#fbbf24; background:rgba(0,0,0,0.6); padding:4px 8px; margin:4px auto; border-radius:6px; width:fit-content;"></div>
 
     <div class="cedula-bottom" id="cedulaBottom">
         <p class="cedula-instruccion" id="cedulaInstruccion">Colocá el FRENTE de tu cédula dentro del marco</p>
@@ -4201,6 +4202,7 @@
     let _cedulaFrenteDataURL = null;
     let _cedulaReversoDataURL = null;
     let _cedulaAnimando = false;
+    let _cedulaMetodoFrente = '';
 
     async function abrirEscaneoCedula() {
         _cedulaPaso = 'frente';
@@ -4298,13 +4300,17 @@
         document.getElementById('cedulaControlesPreview').style.display = 'none';
     }
 
-    function cedulaMostrarVistaPreview(dataURL) {
+    function cedulaMostrarVistaPreview(dataURL, metodoReverso) {
         const img = document.getElementById('cedulaPreviewImg');
         img.src = dataURL;
         document.getElementById('cedulaCamaraWrap').style.display = 'none';
         img.style.display = 'block';
         document.getElementById('cedulaControlesCamara').style.display = 'none';
         document.getElementById('cedulaControlesPreview').style.display = 'flex';
+
+        const debug = document.getElementById('cedulaDebugMetodo');
+        debug.textContent = `Frente: ${_cedulaMetodoFrente} · Reverso: ${metodoReverso}`;
+        debug.style.display = 'block';
     }
 
     // Animación corta (sin texto ni botón) encima de la cámara, que le
@@ -4392,20 +4398,24 @@
         canvasAmplio.height = Math.round(ampAlto);
         canvasAmplio.getContext('2d').drawImage(fuente, ampX, ampY, ampAncho, ampAlto, 0, 0, canvasAmplio.width, canvasAmplio.height);
 
-        const canvasDetectado = cedulaDetectarBordesCV(canvasAmplio) || cedulaDetectarBordes(canvasAmplio);
+        const cvOK = cedulaDetectarBordesCV(canvasAmplio);
+        const perfilOK = cvOK ? null : cedulaDetectarBordes(canvasAmplio);
+        const canvasDetectado = cvOK || perfilOK;
         const canvasFinal = canvasDetectado || canvasMarco;
+        const metodoUsado = cvOK ? 'OpenCV (contorno real)' : (perfilOK ? 'perfil de contraste' : 'marco guía (respaldo — no se detectó el borde)');
         const dataURL = canvasFinal.toDataURL('image/jpeg', 0.94);
 
         if (_cedulaPaso === 'frente') {
             // Sin pantalla de confirmación: guarda, avisa con la animación
             // de "volteá la cédula" y queda lista para el reverso.
             _cedulaFrenteDataURL = dataURL;
+            _cedulaMetodoFrente = metodoUsado;
             _cedulaPaso = 'reverso';
             cedulaActualizarPasoUI();
             cedulaMostrarAnimacionVoltear();
         } else {
             _cedulaReversoDataURL = dataURL;
-            cedulaMostrarVistaPreview(dataURL);
+            cedulaMostrarVistaPreview(dataURL, metodoUsado);
         }
     }
 
