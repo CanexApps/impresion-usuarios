@@ -3449,6 +3449,10 @@
                 void banner.offsetWidth;
                 banner.classList.add('banner-credito-nuevo');
                 lanzarChispasBanner(banner);
+
+                if (remitenteTransferencia) {
+                    mostrarPremioAnimacion(montoRecibidoTransferencia, `que te transfirió ${remitenteTransferencia} 💸`);
+                }
             }
         } else {
             const enCiclo = pedidos % CREDITO_CONFIG.pedidosPorNivel;
@@ -3542,8 +3546,10 @@
     }
 
     // ── ANIMACIÓN DE PREMIO ──────────────────────────────────────
-    function mostrarPremioAnimacion(montoPremio) {
+    function mostrarPremioAnimacion(montoPremio, subtexto) {
         document.getElementById('premioMontoTexto').textContent = `₡${formatColones(montoPremio)}`;
+        document.getElementById('premioOverlay').querySelector('.premio-sub').textContent =
+            subtexto || 'de crédito ganado por ser cliente frecuente';
         document.getElementById('premioOverlay').classList.add('visible');
         lanzarConfetti();
     }
