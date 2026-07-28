@@ -58,7 +58,8 @@
             position: fixed;
             inset: 0;
             z-index: 20000;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            background: #0b1220;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -69,7 +70,52 @@
             opacity: 0;
             pointer-events: none;
         }
+        .splash-aurora {
+            position: absolute;
+            inset: -20%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .splash-aurora span {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.55;
+            mix-blend-mode: screen;
+        }
+        .splash-aurora span:nth-child(1) {
+            width: 55vw; height: 55vw;
+            top: -10%; left: -10%;
+            background: #2563eb;
+            animation: auroraFlotar1 11s ease-in-out infinite alternate;
+        }
+        .splash-aurora span:nth-child(2) {
+            width: 50vw; height: 50vw;
+            bottom: -15%; right: -10%;
+            background: #818cf8;
+            animation: auroraFlotar2 13s ease-in-out infinite alternate;
+        }
+        .splash-aurora span:nth-child(3) {
+            width: 40vw; height: 40vw;
+            top: 30%; left: 55%;
+            background: #38bdf8;
+            animation: auroraFlotar3 9s ease-in-out infinite alternate;
+        }
+        @keyframes auroraFlotar1 {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(8%, 10%) scale(1.15); }
+        }
+        @keyframes auroraFlotar2 {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-10%, -6%) scale(1.1); }
+        }
+        @keyframes auroraFlotar3 {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-8%, 8%) scale(1.2); }
+        }
         .splash-contenido {
+            position: relative;
+            z-index: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1679,6 +1725,7 @@
 
 <!-- Pantalla de bienvenida con efecto de máquina de escribir -->
 <div id="splashBienvenida">
+    <div class="splash-aurora"><span></span><span></span><span></span></div>
     <div class="splash-contenido">
         <div class="splash-escena">
             <div class="splash-impresora">🖨️</div>
