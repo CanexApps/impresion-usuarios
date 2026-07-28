@@ -184,29 +184,6 @@
             70%  { transform: translate(var(--dx), var(--dy)) scale(1.06) rotate(var(--rot)); }
             100% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--rot)); }
         }
-        .splash-chispas {
-            position: absolute;
-            top: 30px;
-            left: 50%;
-            width: 0;
-            height: 0;
-            z-index: 3;
-        }
-        .splash-chispas span {
-            position: absolute;
-            top: 0; left: 0;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: #bfdbfe;
-            box-shadow: 0 0 6px 2px #60a5fa;
-            opacity: 0;
-            animation: splashChispaVolar 0.55s ease-out forwards;
-        }
-        @keyframes splashChispaVolar {
-            0%   { opacity: 1; transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--d)) scale(.3); }
-        }
         #splashTexto {
             font-style: italic;
             font-weight: 600;
@@ -1758,18 +1735,6 @@
                 <div class="splash-hoja"><span></span><span></span><span></span></div>
                 <div class="splash-hoja"><span></span><span></span><span></span></div>
                 <div class="splash-hoja"><span></span><span></span><span></span></div>
-            </div>
-            <div class="splash-chispas">
-                <span style="--a:-70deg; --d:34px; animation-delay:.05s;"></span>
-                <span style="--a:-30deg; --d:28px; animation-delay:.06s;"></span>
-                <span style="--a:-10deg; --d:30px; animation-delay:.22s;"></span>
-                <span style="--a:30deg;  --d:38px; animation-delay:.23s;"></span>
-                <span style="--a:60deg;  --d:26px; animation-delay:.39s;"></span>
-                <span style="--a:-50deg; --d:36px; animation-delay:.40s;"></span>
-                <span style="--a:10deg;  --d:32px; animation-delay:.56s;"></span>
-                <span style="--a:80deg;  --d:28px; animation-delay:.57s;"></span>
-                <span style="--a:-90deg; --d:30px; animation-delay:.73s;"></span>
-                <span style="--a:40deg;  --d:34px; animation-delay:.74s;"></span>
             </div>
         </div>
         <div id="splashTexto"><span id="splashTextoTyped"></span><span id="splashCursor">|</span></div>
@@ -4133,39 +4098,10 @@
         } catch (e) {}
     }
 
-    // Clic corto y percusivo, uno por cada hoja que "sale" de la impresora.
-    function splashSonidoClic() {
-        try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            const ctx = new AudioCtx();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.value = 720;
-            const t0 = ctx.currentTime;
-            gain.gain.setValueAtTime(0.05, t0);
-            gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(t0);
-            osc.stop(t0 + 0.07);
-        } catch (e) {}
-    }
-
     function ejecutarSplashBienvenida() {
         const elTyped = document.getElementById('splashTextoTyped');
         const elSplash = document.getElementById('splashBienvenida');
         if (!elTyped || !elSplash) return;
-
-        // Vibración corta al abrir la app (si el dispositivo lo soporta)
-        if (navigator.vibrate) {
-            try { navigator.vibrate(20); } catch (e) {}
-        }
-
-        // Clics sincronizados con la salida de cada una de las 5 hojas
-        // (mismos tiempos que los animation-delay del CSS: .splash-hoja)
-        [50, 220, 390, 560, 730].forEach(ms => setTimeout(splashSonidoClic, ms));
 
         // Saludo personalizado si ya reconocemos al cliente en este navegador
         const nombreGuardado = (localStorage.getItem('miCentroImpresion_nombreCliente') || '').trim();
