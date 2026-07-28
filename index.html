@@ -74,21 +74,69 @@
             flex-direction: column;
             align-items: center;
         }
+        .splash-escena {
+            position: relative;
+            width: 150px;
+            height: 100px;
+            margin: 0 auto;
+        }
         .splash-impresora {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
             font-size: 2.6rem;
             line-height: 1;
-            position: relative;
-            margin-bottom: 4px;
+            z-index: 2;
             filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
+            animation: splashImpresoraVibra 0.28s ease-in-out 5;
         }
-        #splashPapel {
-            width: 46px;
-            height: 0;
-            margin: 0 auto;
-            background: linear-gradient(180deg, #f8fafc, #e2e8f0);
-            border-radius: 0 0 4px 4px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            transition: height 0.25s ease;
+        @keyframes splashImpresoraVibra {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(2px); }
+        }
+        .splash-pila {
+            position: absolute;
+            top: 32px;
+            left: 0;
+            width: 100%;
+            height: 68px;
+            z-index: 1;
+        }
+        .splash-hoja {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 38px;
+            height: 50px;
+            margin-left: -19px;
+            box-sizing: border-box;
+            padding: 7px 5px;
+            background: linear-gradient(180deg, #fbfcfe, #e7ebf2);
+            border-radius: 2px 2px 5px 5px;
+            box-shadow: 0 3px 9px rgba(0,0,0,0.3);
+            opacity: 0;
+            animation: splashHojaSalir 0.6s cubic-bezier(.34,1.56,.64,1) forwards;
+        }
+        .splash-hoja span {
+            display: block;
+            height: 2px;
+            border-radius: 1px;
+            background: #cbd5e1;
+            margin-bottom: 4px;
+        }
+        .splash-hoja span:nth-child(2) { width: 78%; }
+        .splash-hoja span:nth-child(3) { width: 55%; }
+        .splash-hoja:nth-child(1) { animation-delay: .05s; --rot: -10deg; --dx: -16px; --dy: 4px; }
+        .splash-hoja:nth-child(2) { animation-delay: .22s; --rot: 6deg;   --dx: 10px;  --dy: 9px; }
+        .splash-hoja:nth-child(3) { animation-delay: .39s; --rot: -4deg;  --dx: -7px;  --dy: 15px; }
+        .splash-hoja:nth-child(4) { animation-delay: .56s; --rot: 8deg;   --dx: 13px;  --dy: 20px; }
+        .splash-hoja:nth-child(5) { animation-delay: .73s; --rot: -2deg;  --dx: 2px;   --dy: 24px; }
+        @keyframes splashHojaSalir {
+            0%   { opacity: 0; transform: translate(0, -28px) scale(.35) rotate(0deg); }
+            45%  { opacity: 1; }
+            70%  { transform: translate(var(--dx), var(--dy)) scale(1.06) rotate(var(--rot)); }
+            100% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--rot)); }
         }
         #splashTexto {
             font-style: italic;
@@ -1632,7 +1680,16 @@
 <!-- Pantalla de bienvenida con efecto de máquina de escribir -->
 <div id="splashBienvenida">
     <div class="splash-contenido">
-        <div class="splash-impresora">🖨️<div id="splashPapel"></div></div>
+        <div class="splash-escena">
+            <div class="splash-impresora">🖨️</div>
+            <div class="splash-pila">
+                <div class="splash-hoja"><span></span><span></span><span></span></div>
+                <div class="splash-hoja"><span></span><span></span><span></span></div>
+                <div class="splash-hoja"><span></span><span></span><span></span></div>
+                <div class="splash-hoja"><span></span><span></span><span></span></div>
+                <div class="splash-hoja"><span></span><span></span><span></span></div>
+            </div>
+        </div>
         <div id="splashTexto"><span id="splashTextoTyped"></span><span id="splashCursor">|</span></div>
     </div>
 </div>
@@ -3997,7 +4054,6 @@
     function ejecutarSplashBienvenida() {
         const elTyped = document.getElementById('splashTextoTyped');
         const elSplash = document.getElementById('splashBienvenida');
-        const elPapel = document.getElementById('splashPapel');
         if (!elTyped || !elSplash) return;
 
         // Saludo personalizado si ya reconocemos al cliente en este navegador
@@ -4017,13 +4073,11 @@
         const velocidadBorrar = 26;
         const pausaAntesDeBorrar = 750;
         const pausaEntreFrases = 180;
-        const alturaMaximaPapel = 30;
 
         function escribir() {
             const frase = frases[indiceFrase];
             if (i <= frase.length) {
                 elTyped.textContent = frase.slice(0, i);
-                elPapel.style.height = Math.round((i / frase.length) * alturaMaximaPapel) + 'px';
                 i++;
                 setTimeout(escribir, velocidadEscribir);
             } else {
@@ -4036,7 +4090,6 @@
             if (i > 0) {
                 i--;
                 elTyped.textContent = frase.slice(0, i);
-                elPapel.style.height = Math.round((i / frase.length) * alturaMaximaPapel) + 'px';
                 setTimeout(borrar, velocidadBorrar);
             } else if (indiceFrase < frases.length - 1) {
                 indiceFrase++;
