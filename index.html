@@ -1044,6 +1044,90 @@
 
         .btn-premio-cerrar:active { background: #4f46e5; }
 
+        /* ── VAUCHER DE TRANSFERENCIA RECIBIDA (distinto del premio) ─── */
+        #voucherTransferenciaOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.75);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+        #voucherTransferenciaOverlay.visible {
+            display: flex;
+            animation: fadeInOverlay 0.35s ease;
+        }
+        .voucher-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 32px 28px 24px;
+            text-align: center;
+            max-width: 320px;
+            width: 90%;
+            animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s both;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .voucher-check {
+            width: 56px;
+            height: 56px;
+            background: #16a34a;
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 14px;
+            box-shadow: 0 6px 16px rgba(22,163,74,0.35);
+        }
+        .voucher-etiqueta {
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .voucher-monto {
+            color: #0f172a;
+            font-size: 2.6rem;
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .voucher-detalle {
+            color: #334155;
+            font-size: 0.98rem;
+            margin-bottom: 18px;
+        }
+        .voucher-detalle b { color: #0f172a; }
+        .voucher-separador {
+            border-top: 2px dashed #e2e8f0;
+            margin: 4px 0 16px;
+        }
+        .voucher-saldo {
+            color: #16a34a;
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin-bottom: 22px;
+        }
+        .btn-voucher-cerrar {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 32px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-voucher-cerrar:active { background: #1d4ed8; }
+
         /* Confetti particles */
         .confetti-piece {
             position: fixed;
@@ -1749,6 +1833,18 @@
         <div class="premio-monto" id="premioMontoTexto">₡100</div>
         <div class="premio-sub">de crédito ganado por ser cliente frecuente</div>
         <button class="btn-premio-cerrar" onclick="cerrarPremioOverlay()">¡Genial, gracias! 🎉</button>
+    </div>
+</div>
+
+<div id="voucherTransferenciaOverlay">
+    <div class="voucher-card">
+        <div class="voucher-check">✓</div>
+        <div class="voucher-etiqueta">Transferencia recibida</div>
+        <div class="voucher-monto" id="voucherMontoTexto">₡0</div>
+        <div class="voucher-detalle" id="voucherDetalleTexto">de <b>Fulano</b></div>
+        <div class="voucher-separador"></div>
+        <div class="voucher-saldo" id="voucherSaldoTexto">Tu nuevo saldo: ₡0</div>
+        <button class="btn-voucher-cerrar" onclick="cerrarVoucherTransferencia()">Entendido</button>
     </div>
 </div>
 
@@ -3451,7 +3547,7 @@
                 lanzarChispasBanner(banner);
 
                 if (remitenteTransferencia) {
-                    mostrarPremioAnimacion(montoRecibidoTransferencia, `que te transfirió ${remitenteTransferencia} 💸`);
+                    mostrarVoucherTransferencia(montoRecibidoTransferencia, remitenteTransferencia, credito);
                 }
             }
         } else {
@@ -3558,6 +3654,21 @@
         document.getElementById('premioOverlay').classList.remove('visible');
         // limpiar confetti
         document.querySelectorAll('.confetti-piece').forEach(el => el.remove());
+    }
+
+    // ── VAUCHER DE TRANSFERENCIA RECIBIDA ────────────────────────
+    // Deliberadamente distinto del overlay de premio (sin "¡Felicidades!"
+    // ni confeti) para que quede clarísimo que es un comprobante de que
+    // otro cliente le envió crédito, y no un premio ganado por la app.
+    function mostrarVoucherTransferencia(monto, remitente, saldoTotal) {
+        document.getElementById('voucherMontoTexto').textContent = `₡${formatColones(monto)}`;
+        document.getElementById('voucherDetalleTexto').innerHTML = `de <b>${remitente}</b>`;
+        document.getElementById('voucherSaldoTexto').textContent = `Tu nuevo saldo: ₡${formatColones(saldoTotal)}`;
+        document.getElementById('voucherTransferenciaOverlay').classList.add('visible');
+    }
+
+    function cerrarVoucherTransferencia() {
+        document.getElementById('voucherTransferenciaOverlay').classList.remove('visible');
     }
 
     // Aviso propio de la app, en vez del alert() nativo del navegador (que
