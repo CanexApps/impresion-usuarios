@@ -3252,78 +3252,145 @@
             if (!db.clientes[destinoFresco.key]) db.clientes[destinoFresco.key] = { pedidos: 0, credito: 0 };
             const clienteDestino = db.clientes[destinoFresco.key];
 
-            // Ya NO se descuenta ni se acredita nada acá: toda transferencia
-            // queda pendiente hasta que el administrador la apruebe desde el
-            // panel de Admin. El crédito del remitente se reserva visualmente
-            // (no se descuenta aún) pero cuenta para el límite diario de
-            // envíos, para evitar que alguien spamee solicitudes.
-            registrarTransferenciaHoy(clienteRemitente);
+            // Solo la PRIMERA transferencia que hace un cliente pasa por
+            // aprobación del administrador — y esa aprobación queda atada al
+            // dispositivo (teléfono) específico desde el que se hizo, no al
+            // cliente en general. Si más adelante transfiere desde otro
+            // teléfono, aunque sea un dispositivo "reconocido" para pedidos
+            // normales, esa transferencia también queda pendiente de aprobar.
+            const tokenDispositivoActual = tcObtenerOCrearTokenDispositivo(keyRemitente);
+            const yaVerificado = !!clienteRemitente.dispositivoTransferenciaVerificado
+                && clienteRemitente.dispositivoTransferenciaVerificado === tokenDispositivoActual;
 
-            // Registrar el movimiento en el mismo sistema de movimientos (pedidos)
-            // que ya utiliza el administrador, sin crear ningún panel nuevo.
             const ahora = new Date();
             const idTransferencia = 'TRF' + Date.now().toString() + Math.floor(100 + Math.random() * 899).toString();
             if (!db.pedidos) db.pedidos = [];
-            db.pedidos.push({
-                id: idTransferencia,
-                tipoMovimiento: 'transferencia_credito',
-                tipoLabel: '💸 Transferencia de Crédito por Teléfono',
-                cliente: nombreRemitente,
-                telefono: telefonoRemitente,
-                clienteDestino: destinoFresco.nombre,
-                telefonoDestino: _transferDestino.telefono,
-                monto: monto,
-                total: monto,
-                fecha: ahora.toLocaleDateString('es-CR'),
-                hora: horaAMPM(ahora),
-                estado: 'Pendiente de aprobación',
-                listo: false,
-                cancelado: false,
-                cantidad: 0,
-                totalSinCredito: 0,
-                creditoUsado: 0,
-                documentoUrl: '',
-                documentoNombre: '',
-                detalleCopias: '',
-                fueAutomatico: false,
-                copias: 0,
-                engargolado: false,
-                grapado: false,
-                modoImpresion: '',
-                metodoPago: 'transferencia_credito',
-                codigoReferido: null,
-                // Toda transferencia requiere que el administrador la apruebe
-                // manualmente antes de que el crédito se mueva de verdad.
-                requiereAprobacion: true,
-                aprobado: false,
-                rechazado: false,
-                // Marca de seguridad adicional: si el remitente envió esto
-                // desde un dispositivo no reconocido para su número, queda
-                // señalado acá para que el administrador lo pueda identificar
-                // de un vistazo al momento de aprobar o rechazar.
-                requiereRevision: !dispositivoConfiableFinal,
-                motivoRevision: !dispositivoConfiableFinal ? 'Transferencia desde dispositivo no reconocido' : null
-            });
 
-            await saveClientesDB(db);
+            if (yaVerificado) {
+                // Cliente ya verificado: se mueve el crédito de inmediato.
+                clienteRemitente.credito = Math.max(0, (clienteRemitente.credito || 0) - monto);
+                registrarTransferenciaHoy(clienteRemitente);
+                clienteRemitente.totalTransferidoHistorico = (clienteRemitente.totalTransferidoHistorico || 0) + monto;
+                registrarHistorialCredito(clienteRemitente, -monto, `Transferencia enviada a ${destinoFresco.nombre} (${_transferDestino.telefono})`);
 
-            // Mostrar la pantalla de comprobante, pero dejando claro que
-            // queda pendiente de aprobación (todavía no se movió el crédito).
-            document.getElementById('tcSuccessIcono').classList.add('tc-icono-pendiente');
-            document.getElementById('tcSuccessTitulo').textContent = 'Transferencia Enviada — Pendiente de Aprobación';
-            document.getElementById('tcSuccessSub').textContent = 'Tu solicitud fue registrada. El crédito se moverá solo cuando el administrador la apruebe.';
-            document.getElementById('tcReciboId').textContent = '#' + idTransferencia;
-            document.getElementById('tcReciboFecha').textContent = `${ahora.toLocaleDateString('es-CR')} · ${horaAMPM(ahora)}`;
-            document.getElementById('tcReciboDestino').textContent = 'A ' + destinoFresco.nombre;
-            document.getElementById('tcReciboMonto').textContent = '₡' + formatColones(monto);
-            document.getElementById('tcReciboSaldoLabel').textContent = 'Estado';
-            document.getElementById('tcReciboSaldoNuevo').textContent = '⏳ Pendiente de aprobación';
-            tcMostrarPantalla('tcSuccess');
-            tcSonidoExito();
+                clienteDestino.credito = (clienteDestino.credito || 0) + monto;
+                registrarHistorialCredito(clienteDestino, monto, `Transferencia recibida de ${nombreRemitente} (${telefonoRemitente})`);
 
-            // El crédito disponible del remitente NO cambió todavía (sigue
-            // reservado hasta la aprobación), así que no tocamos el caché
-            // ni forzamos una actualización visual del saldo.
+                db.pedidos.push({
+                    id: idTransferencia,
+                    tipoMovimiento: 'transferencia_credito',
+                    tipoLabel: '💸 Transferencia de Crédito por Teléfono',
+                    cliente: nombreRemitente,
+                    telefono: telefonoRemitente,
+                    clienteDestino: destinoFresco.nombre,
+                    telefonoDestino: _transferDestino.telefono,
+                    monto: monto,
+                    total: monto,
+                    fecha: ahora.toLocaleDateString('es-CR'),
+                    hora: horaAMPM(ahora),
+                    estado: 'Completada',
+                    listo: true,
+                    cancelado: false,
+                    cantidad: 0,
+                    totalSinCredito: 0,
+                    creditoUsado: 0,
+                    documentoUrl: '',
+                    documentoNombre: '',
+                    detalleCopias: '',
+                    fueAutomatico: false,
+                    copias: 0,
+                    engargolado: false,
+                    grapado: false,
+                    modoImpresion: '',
+                    metodoPago: 'transferencia_credito',
+                    codigoReferido: null,
+                    requiereAprobacion: false,
+                    aprobado: true,
+                    rechazado: false,
+                    requiereRevision: !dispositivoConfiableFinal,
+                    motivoRevision: !dispositivoConfiableFinal ? 'Transferencia desde dispositivo no reconocido' : null
+                });
+
+                await saveClientesDB(db);
+
+                document.getElementById('tcSuccessIcono').classList.remove('tc-icono-pendiente');
+                document.getElementById('tcSuccessTitulo').textContent = 'Transferencia Completada';
+                document.getElementById('tcSuccessSub').textContent = 'El crédito fue transferido de forma inmediata y segura.';
+                document.getElementById('tcReciboId').textContent = '#' + idTransferencia;
+                document.getElementById('tcReciboFecha').textContent = `${ahora.toLocaleDateString('es-CR')} · ${horaAMPM(ahora)}`;
+                document.getElementById('tcReciboDestino').textContent = 'A ' + destinoFresco.nombre;
+                document.getElementById('tcReciboMonto').textContent = '₡' + formatColones(monto);
+                document.getElementById('tcReciboSaldoLabel').textContent = 'Saldo disponible';
+                document.getElementById('tcReciboSaldoNuevo').textContent = '₡' + formatColones(clienteRemitente.credito);
+                tcMostrarPantalla('tcSuccess');
+                tcSonidoExito();
+
+                _transferCreditoDisponible = clienteRemitente.credito;
+                await revisarPuntosCliente(nombreRemitente, telefonoRemitente);
+            } else {
+                // Primera transferencia de este cliente: NO se mueve nada
+                // todavía. Queda pendiente hasta que el administrador la
+                // apruebe desde el panel de Admin (y esa aprobación es la
+                // que marca al cliente como verificado para el futuro).
+                registrarTransferenciaHoy(clienteRemitente);
+
+                db.pedidos.push({
+                    id: idTransferencia,
+                    tipoMovimiento: 'transferencia_credito',
+                    tipoLabel: '💸 Transferencia de Crédito por Teléfono',
+                    cliente: nombreRemitente,
+                    telefono: telefonoRemitente,
+                    clienteDestino: destinoFresco.nombre,
+                    telefonoDestino: _transferDestino.telefono,
+                    monto: monto,
+                    total: monto,
+                    fecha: ahora.toLocaleDateString('es-CR'),
+                    hora: horaAMPM(ahora),
+                    estado: 'Pendiente de aprobación',
+                    listo: false,
+                    cancelado: false,
+                    cantidad: 0,
+                    totalSinCredito: 0,
+                    creditoUsado: 0,
+                    documentoUrl: '',
+                    documentoNombre: '',
+                    detalleCopias: '',
+                    fueAutomatico: false,
+                    copias: 0,
+                    engargolado: false,
+                    grapado: false,
+                    modoImpresion: '',
+                    metodoPago: 'transferencia_credito',
+                    codigoReferido: null,
+                    // Solo se usa para verificar por primera vez a este
+                    // cliente; el administrador la aprueba o rechaza desde
+                    // el panel de Transferencias.
+                    requiereAprobacion: true,
+                    aprobado: false,
+                    rechazado: false,
+                    requiereRevision: !dispositivoConfiableFinal,
+                    motivoRevision: !dispositivoConfiableFinal ? 'Transferencia desde dispositivo no reconocido' : null,
+                    // Dispositivo (teléfono) específico desde el que se envió
+                    // esta solicitud; es lo que el administrador "aprueba" al
+                    // marcarla, para que las próximas automáticas salgan
+                    // solo desde este mismo dispositivo.
+                    tokenDispositivoRemitente: tokenDispositivoActual
+                });
+
+                await saveClientesDB(db);
+
+                document.getElementById('tcSuccessIcono').classList.add('tc-icono-pendiente');
+                document.getElementById('tcSuccessTitulo').textContent = 'Transferencia Enviada — Pendiente de Aprobación';
+                document.getElementById('tcSuccessSub').textContent = 'Como es tu primera transferencia desde este teléfono, el administrador la debe aprobar. Las próximas desde este mismo teléfono saldrán automáticas.';
+                document.getElementById('tcReciboId').textContent = '#' + idTransferencia;
+                document.getElementById('tcReciboFecha').textContent = `${ahora.toLocaleDateString('es-CR')} · ${horaAMPM(ahora)}`;
+                document.getElementById('tcReciboDestino').textContent = 'A ' + destinoFresco.nombre;
+                document.getElementById('tcReciboMonto').textContent = '₡' + formatColones(monto);
+                document.getElementById('tcReciboSaldoLabel').textContent = 'Estado';
+                document.getElementById('tcReciboSaldoNuevo').textContent = '⏳ Pendiente de aprobación';
+                tcMostrarPantalla('tcSuccess');
+                tcSonidoExito();
+            }
         } catch (e) {
             mostrarAviso('No se pudo completar la transferencia. Probá de nuevo.');
         } finally {
