@@ -99,6 +99,15 @@
         }
         .acceso-card h2 { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin-bottom: 6px; letter-spacing: -0.3px; }
         .acceso-card p { font-size: 0.85rem; color: #64748b; margin-bottom: 22px; line-height: 1.4; }
+        .btn-google-firebase {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; max-width: 280px; padding: 12px 20px;
+            background: #4285F4; color: #fff; border: none; border-radius: 24px;
+            font-size: 0.9rem; font-weight: 600; font-family: inherit; cursor: pointer;
+            box-shadow: 0 2px 6px rgba(66,133,244,0.35);
+        }
+        .btn-google-firebase svg { background: #fff; border-radius: 50%; padding: 2px; }
+        .btn-google-firebase:active { transform: scale(0.97); }
         /* ---- Carrusel de beneficios animado ---- */
         .beneficio-carrusel {
             position: relative;
@@ -299,11 +308,176 @@
         .mc-header img, #mcFotoFallback {
             width: 76px; height: 76px; border-radius: 50%;
             border: 3px solid rgba(255,255,255,0.7);
-            margin: 0 auto 12px;
             display: flex; align-items: center; justify-content: center;
             font-size: 1.6rem; font-weight: 800; background: rgba(255,255,255,0.15);
-            object-fit: cover;
+            object-fit: cover; position: relative; overflow: hidden;
+            box-shadow: inset 0 -6px 10px rgba(0,0,0,0.12), inset 0 2px 4px rgba(255,255,255,0.2);
         }
+        .mc-avatar-wrap { position: relative; width: 76px; margin: 0 auto 12px; }
+        .mc-editar-avatar {
+            position: absolute; bottom: -2px; right: -2px;
+            width: 26px; height: 26px; border-radius: 50%; font-size: 0.8rem;
+            background: #fff; border: 2px solid #7c3aed; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Escena/piso/deco/sombra dentro de un avatar con ícono (header y picker) */
+        .escena-piso { position: absolute; left: -10%; right: -10%; bottom: -18%; height: 46%; border-radius: 50%; }
+        .escena-deco { position: absolute; opacity: 0.85; }
+        .personaje-sombra {
+            position: absolute; bottom: 14%; left: 50%; transform: translateX(-50%);
+            width: 46%; height: 10%; background: rgba(0,0,0,0.22);
+            border-radius: 50%; filter: blur(1.5px);
+            animation: sombraPulso 1.4s ease-in-out infinite;
+        }
+        @keyframes sombraPulso {
+            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.22; }
+            50% { transform: translateX(-50%) scale(0.82); opacity: 0.14; }
+        }
+        .avatar-emoji {
+            position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%);
+            font-size: 1.9rem; line-height: 1;
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,0.28));
+            display: inline-block;
+        }
+        .mc-header .avatar-emoji { font-size: 2.3rem; }
+
+        /* ---- Escenas de fondo por avatar ---- */
+        .escena-buho { background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 65%, #1e40af 100%); }
+        .escena-buho .escena-piso { background: linear-gradient(180deg, #334155, #1e293b); }
+        .escena-gato { background: linear-gradient(180deg, #fde68a 0%, #fbbf24 100%); }
+        .escena-gato .escena-piso { background: linear-gradient(180deg, #f59e0b, #b45309); }
+        .escena-perro { background: linear-gradient(180deg, #bae6fd 0%, #7dd3fc 100%); }
+        .escena-perro .escena-piso { background: linear-gradient(180deg, #4ade80, #16a34a); }
+        .escena-zorro { background: linear-gradient(180deg, #fed7aa 0%, #fb923c 100%); }
+        .escena-zorro .escena-piso { background: linear-gradient(180deg, #92400e, #451a03); }
+        .escena-panda { background: linear-gradient(180deg, #dcfce7 0%, #86efac 100%); }
+        .escena-panda .escena-piso { background: linear-gradient(180deg, #15803d, #14532d); }
+        .escena-leon { background: linear-gradient(180deg, #fef3c7 0%, #f59e0b 100%); }
+        .escena-leon .escena-piso { background: linear-gradient(180deg, #b45309, #78350f); }
+        .escena-koala { background: linear-gradient(180deg, #e0f2fe 0%, #7dd3fc 100%); }
+        .escena-koala .escena-piso { background: linear-gradient(180deg, #16a34a, #14532d); }
+        .escena-tigre { background: linear-gradient(180deg, #166534 0%, #14532d 100%); }
+        .escena-tigre .escena-piso { background: linear-gradient(180deg, #4d7c0f, #365314); }
+        .escena-unicornio { background: linear-gradient(180deg, #fbcfe8 0%, #c4b5fd 100%); }
+        .escena-unicornio .escena-piso { background: linear-gradient(180deg, #e9d5ff, #d8b4fe); }
+        .escena-pinguino { background: linear-gradient(180deg, #e0f2fe 0%, #0284c7 100%); }
+        .escena-pinguino .escena-piso { background: linear-gradient(180deg, #f0f9ff, #bae6fd); }
+        .escena-conejo { background: linear-gradient(180deg, #fce7f3 0%, #f9a8d4 100%); }
+        .escena-conejo .escena-piso { background: linear-gradient(180deg, #86efac, #22c55e); }
+        .escena-rana { background: linear-gradient(180deg, #d9f99d 0%, #84cc16 100%); }
+        .escena-rana .escena-piso { background: linear-gradient(180deg, #0e7490, #155e75); }
+
+        .estrella { width: 3px; height: 3px; background: #fff; border-radius: 50%; animation: brilloEstrella 2s ease-in-out infinite; }
+        @keyframes brilloEstrella { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .nube-deco { width: 14px; height: 7px; background: #fff; border-radius: 8px; opacity: 0.8; }
+        .copo-deco { color: #fff; font-size: 8px; opacity: 0.7; }
+        .hoja-deco { font-size: 9px; opacity: 0.8; }
+
+        /* ---- Animación propia de cada personaje ---- */
+        .anim-buho .avatar-emoji { animation: buhoParpadeo 2.8s ease-in-out infinite; transform-origin: 50% 65%; }
+        @keyframes buhoParpadeo {
+            0%, 88%, 100% { transform: translateX(-50%) scaleY(1) rotate(0deg); }
+            90% { transform: translateX(-50%) scaleY(0.15) rotate(0deg); }
+            92% { transform: translateX(-50%) scaleY(1) rotate(-6deg); }
+            95% { transform: translateX(-50%) scaleY(1) rotate(6deg); }
+            97% { transform: translateX(-50%) scaleY(1) rotate(0deg); }
+        }
+        .anim-gato .avatar-emoji { animation: gatoBalance 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
+        @keyframes gatoBalance {
+            0%, 100% { transform: translateX(-50%) rotate(-8deg); }
+            50% { transform: translateX(-50%) rotate(8deg); }
+        }
+        .anim-perro .avatar-emoji { animation: perroSalta 0.9s ease-in-out infinite; }
+        @keyframes perroSalta {
+            0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+            30% { transform: translateX(-50%) translateY(-7px) scale(1.05, 0.95); }
+            50% { transform: translateX(-50%) translateY(0) scale(0.95, 1.05); }
+        }
+        .anim-zorro .avatar-emoji { animation: zorroCorre 1s ease-in-out infinite; }
+        @keyframes zorroCorre {
+            0%, 100% { transform: translateX(-58%) rotate(-6deg); }
+            50% { transform: translateX(-42%) rotate(6deg); }
+        }
+        .anim-panda .avatar-emoji { animation: pandaVaiven 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+        @keyframes pandaVaiven {
+            0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+            50% { transform: translateX(-50%) rotate(5deg); }
+        }
+        .anim-leon .avatar-emoji { animation: leonRuge 1.6s ease-in-out infinite; }
+        @keyframes leonRuge {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.16); }
+        }
+        .anim-koala .avatar-emoji { animation: koalaMece 3s ease-in-out infinite; transform-origin: 50% 100%; }
+        @keyframes koalaMece {
+            0%, 100% { transform: translateX(-50%) rotate(-4deg); }
+            50% { transform: translateX(-50%) rotate(4deg); }
+        }
+        .anim-tigre .avatar-emoji { animation: tigreAcecha 1.3s ease-in-out infinite; }
+        @keyframes tigreAcecha {
+            0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+            50% { transform: translateX(-50%) translateY(3px) scale(1.06, 0.94); }
+        }
+        .anim-unicornio .avatar-emoji { animation: unicornioFlota 2.2s ease-in-out infinite; }
+        @keyframes unicornioFlota {
+            0%, 100% { transform: translateX(-50%) translateY(0) rotate(-3deg); }
+            50% { transform: translateX(-50%) translateY(-7px) rotate(3deg); }
+        }
+        .anim-pinguino .avatar-emoji { animation: pinguinoCamina 0.8s ease-in-out infinite; transform-origin: 50% 100%; }
+        @keyframes pinguinoCamina {
+            0%, 100% { transform: translateX(-50%) rotate(-12deg); }
+            50% { transform: translateX(-50%) rotate(12deg); }
+        }
+        .anim-conejo .avatar-emoji { animation: conejoSalta 0.7s ease-in-out infinite; }
+        @keyframes conejoSalta {
+            0%, 100% { transform: translateX(-50%) translateY(0) scaleY(1); }
+            35% { transform: translateX(-50%) translateY(-9px) scaleY(1.05); }
+            55% { transform: translateX(-50%) translateY(0) scaleY(0.9); }
+        }
+        .anim-rana .avatar-emoji { animation: ranaSalta 1.4s ease-in-out infinite; }
+        @keyframes ranaSalta {
+            0%, 55%, 100% { transform: translateX(-50%) translateY(0) scale(1,1); }
+            25% { transform: translateX(-50%) translateY(-10px) scale(0.9,1.15); }
+            60% { transform: translateX(-50%) translateY(0) scale(1.15,0.85); }
+            70% { transform: translateX(-50%) translateY(0) scale(1,1); }
+        }
+
+        /* Selector de avatar (picker) */
+        #selectorAvatarOverlay {
+            display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+            z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+        }
+        #selectorAvatarOverlay.visible { display: flex; }
+        .selector-avatar-card {
+            background: #fff; border-radius: 20px; padding: 22px; max-width: 340px; width: 100%;
+            text-align: center;
+        }
+        .selector-avatar-card h3 { margin: 0 0 4px; font-size: 1.05rem; font-weight: 800; color: #1e293b; }
+        .selector-avatar-card p { margin: 0 0 16px; font-size: 0.8rem; color: #64748b; }
+        .selector-avatar-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 10px; margin-bottom: 8px;
+        }
+        .avatar-celda { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
+        .avatar-escena {
+            width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid transparent;
+            position: relative; overflow: hidden;
+            transition: border-color 0.15s ease, transform 0.15s ease;
+            box-shadow: inset 0 -6px 10px rgba(0,0,0,0.12), inset 0 2px 4px rgba(255,255,255,0.2);
+        }
+        .avatar-celda.seleccionado .avatar-escena { border-color: #1e293b; }
+        .avatar-celda:active .avatar-escena { transform: scale(0.92); }
+        .avatar-nombre { font-size: 0.6rem; font-weight: 700; color: #94a3b8; }
+        .avatar-celda.seleccionado .avatar-nombre { color: #1e293b; }
+        .selector-avatar-restaurar {
+            background: none; border: none; color: #6366f1; font-size: 0.8rem; font-weight: 700;
+            cursor: pointer; margin: 8px 0 10px; display: block; width: 100%;
+        }
+        .selector-avatar-cerrar {
+            width: 100%; padding: 12px; border-radius: 12px; border: none;
+            background: #f1f5f9; color: #475569; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+        }
+
         .mc-nombre { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.2px; }
         .mc-nombre-fila { display: flex; align-items: center; justify-content: center; gap: 6px; }
         .mc-editar-nombre {
@@ -395,12 +569,14 @@
 
         .mc-vincular-tel { display: flex; gap: 8px; }
         .mc-vincular-tel input {
-            flex: 1; padding: 11px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+            flex: 1; min-width: 0; padding: 11px 12px; border: 1.5px solid #e2e8f0; border-radius: 10px;
             font-size: 0.88rem; font-family: inherit;
         }
         .mc-vincular-tel button {
+            flex-shrink: 0;
             background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; border: none;
-            border-radius: 10px; padding: 0 18px; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+            border-radius: 10px; padding: 0 14px; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+            white-space: nowrap;
         }
         .mc-telefono-aviso { font-size: 0.76rem; margin-top: 6px; min-height: 16px; }
         .mc-telefono-aviso.ok { color: #059669; font-weight: 600; }
@@ -2428,6 +2604,8 @@
             background: linear-gradient(90deg, #4f46e5, #7c3aed);
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -3033,8 +3211,11 @@
     <div id="seccionPerfil">
         <div class="mc-card">
             <div class="mc-header">
-                <img id="mcFoto" src="" style="display:none;">
-                <span id="mcFotoFallback"></span>
+                <div class="mc-avatar-wrap">
+                    <img id="mcFoto" src="" style="display:none;">
+                    <span id="mcFotoFallback"></span>
+                    <button type="button" class="mc-editar-avatar" onclick="mostrarSelectorAvatar()" title="Cambiar tu avatar">✏️</button>
+                </div>
                 <div class="mc-nombre-fila">
                     <div class="mc-nombre" id="mcNombre">—</div>
                     <button type="button" class="mc-editar-nombre" onclick="mostrarEditarNombre()" title="Editar tu nombre">✏️</button>
@@ -3100,11 +3281,21 @@
     </div>
 </div>
 
+<div id="selectorAvatarOverlay" onclick="if(event.target===this) ocultarSelectorAvatar()">
+    <div class="selector-avatar-card">
+        <h3>Elegí tu avatar</h3>
+        <p>Reemplaza tu foto de Google solo dentro de la app</p>
+        <div class="selector-avatar-grid" id="selectorAvatarGrid"></div>
+        <button type="button" class="selector-avatar-restaurar" onclick="restaurarFotoGoogle()">↺ Usar mi foto de Google</button>
+        <button type="button" class="selector-avatar-cerrar" onclick="ocultarSelectorAvatar()">Cerrar</button>
+    </div>
+</div>
+
 <script>
     // Versión de la app — subo este número cada vez que hacemos un cambio,
     // así se puede ver en Mi Cuenta qué tan actualizada está la copia de
     // cada cliente.
-    const VERSION_APP = '1.3.5';
+    const VERSION_APP = '1.4.5';
 
     // Carrusel animado de beneficios en la pantalla "Antes de comenzar"
     (function iniciarCarruselBeneficios() {
@@ -3153,6 +3344,23 @@
 
     // ── FIREBASE CONFIG ──────────────────────────────────────────
     const FIREBASE_URL = "https://proyector-fc12f-default-rtdb.firebaseio.com";
+
+    // Firebase Authentication — verifica de verdad la identidad de Google
+    // (a diferencia del sistema viejo, que solo leía el token sin
+    // confirmarlo con Google). Reutiliza el mismo proyecto de Firebase.
+    const firebaseConfig = {
+        apiKey: "AIzaSyDHP2BB8BkFxLvqoEfQO8i-apWocCeKlg8",
+        authDomain: "proyector-fc12f.firebaseapp.com",
+        databaseURL: "https://proyector-fc12f-default-rtdb.firebaseio.com",
+        projectId: "proyector-fc12f",
+        storageBucket: "proyector-fc12f.firebasestorage.app",
+        messagingSenderId: "503835083200",
+        appId: "1:503835083200:web:a21b9fc4808e2ad9a18825",
+        measurementId: "G-72QRLQ8WMT"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const firebaseAuth = firebase.auth();
+
 
     // Dirección pública donde tus clientes van a usar la app (ej: "https://tuimprenta.com").
     // Completá esto cuando subas la app a internet — mientras tanto quedá vacía.
@@ -5238,9 +5446,10 @@
                     elSplash.classList.add('oculto');
                     setTimeout(() => {
                         elSplash.style.display = 'none';
-                        if (debeMostrarAccesoInicial()) {
-                            document.getElementById('accesoInicialOverlay').classList.add('visible');
-                        }
+                        // La decisión de mostrar la pantalla de acceso ya no
+                        // se toma acá con un cronómetro fijo — queda 100% en
+                        // manos de firebaseAuth.onAuthStateChanged, que es
+                        // quien de verdad sabe si hay o no sesión confirmada.
                     }, 550);
                 }, 900);
             }
@@ -5252,26 +5461,132 @@
     // verificado de la cuenta de Google del cliente). El teléfono lo
     // sigue escribiendo la persona a mano, porque es la clave que usa
     // el resto de la app (crédito, transferencias, historial).
-    function decodificarJWTGoogle(token) {
-        try {
-            const payload = token.split('.')[1];
-            const json = decodeURIComponent(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-                .split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            return JSON.parse(json);
-        } catch (e) { return null; }
-    }
-
     let _correoGoogleVerificado = null;
     let _fotoGoogleVerificada = null;
+    let _avatarIconoActual = null; // { emoji, c1, c2 } — reemplaza la foto de Google si el cliente eligió uno
 
-    function manejarRespuestaGoogle(respuesta) {
-        const datos = decodificarJWTGoogle(respuesta.credential);
-        if (!datos || !datos.name) return;
-        aplicarSesionGoogle(datos.name, datos.email || null, datos.picture || null);
+    const AVATAR_OPCIONES = [
+        { emoji: '🦉', nombre: 'Búho', escena: 'escena-buho', clase: 'anim-buho',
+          deco: '<div class="escena-deco estrella" style="top:14%;left:20%"></div><div class="escena-deco estrella" style="top:24%;left:72%"></div><div class="escena-deco estrella" style="top:10%;left:55%"></div>' },
+        { emoji: '🐱', nombre: 'Gato', escena: 'escena-gato', clase: 'anim-gato', deco: '' },
+        { emoji: '🐶', nombre: 'Perro', escena: 'escena-perro', clase: 'anim-perro', deco: '' },
+        { emoji: '🦊', nombre: 'Zorro', escena: 'escena-zorro', clase: 'anim-zorro',
+          deco: '<div class="escena-deco hoja-deco" style="top:16%;left:18%">🍂</div>' },
+        { emoji: '🐼', nombre: 'Panda', escena: 'escena-panda', clase: 'anim-panda',
+          deco: '<div class="escena-deco hoja-deco" style="top:12%;left:70%">🎋</div>' },
+        { emoji: '🦁', nombre: 'León', escena: 'escena-leon', clase: 'anim-leon', deco: '' },
+        { emoji: '🐨', nombre: 'Koala', escena: 'escena-koala', clase: 'anim-koala',
+          deco: '<div class="escena-deco hoja-deco" style="top:12%;left:68%">🌿</div>' },
+        { emoji: '🐯', nombre: 'Tigre', escena: 'escena-tigre', clase: 'anim-tigre',
+          deco: '<div class="escena-deco hoja-deco" style="top:14%;left:20%">🌴</div>' },
+        { emoji: '🦄', nombre: 'Unicornio', escena: 'escena-unicornio', clase: 'anim-unicornio',
+          deco: '<div class="escena-deco nube-deco" style="top:16%;left:16%"></div><div class="escena-deco nube-deco" style="top:22%;left:64%"></div>' },
+        { emoji: '🐧', nombre: 'Pingüino', escena: 'escena-pinguino', clase: 'anim-pinguino',
+          deco: '<div class="escena-deco copo-deco" style="top:14%;left:22%">❄</div><div class="escena-deco copo-deco" style="top:20%;left:70%">❄</div>' },
+        { emoji: '🐰', nombre: 'Conejo', escena: 'escena-conejo', clase: 'anim-conejo', deco: '' },
+        { emoji: '🐸', nombre: 'Rana', escena: 'escena-rana', clase: 'anim-rana', deco: '' }
+    ];
+
+    // Arma el HTML interno de una "escena" de avatar (piso + decoración + sombra + personaje)
+    function construirEscenaHTML(opcion) {
+        return `
+            <div class="escena-piso"></div>
+            ${opcion.deco || ''}
+            <div class="personaje-sombra"></div>
+            <span class="avatar-emoji">${opcion.emoji}</span>
+        `;
+    }
+
+    // Dibuja el avatar de Mi Cuenta según prioridad: ícono elegido > foto de
+    // Google > inicial del nombre.
+    function renderizarAvatarMiCuenta(nombre) {
+        const fotoEl = document.getElementById('mcFoto');
+        const fotoFallback = document.getElementById('mcFotoFallback');
+        if (!fotoEl || !fotoFallback) return;
+        // Limpiar clases de escena/animación previas
+        fotoFallback.className = '';
+        if (_avatarIconoActual && _avatarIconoActual.emoji) {
+            fotoEl.style.display = 'none';
+            fotoFallback.style.display = 'flex';
+            fotoFallback.classList.add(_avatarIconoActual.escena, _avatarIconoActual.clase);
+            fotoFallback.innerHTML = construirEscenaHTML(_avatarIconoActual);
+        } else if (_fotoGoogleVerificada) {
+            fotoEl.src = _fotoGoogleVerificada;
+            fotoEl.style.display = 'block';
+            fotoFallback.style.display = 'none';
+            fotoFallback.innerHTML = '';
+        } else {
+            fotoEl.style.display = 'none';
+            fotoFallback.style.display = 'flex';
+            fotoFallback.innerHTML = '';
+            fotoFallback.textContent = tcInicial(nombre);
+        }
+    }
+
+    function mostrarSelectorAvatar() {
+        const grid = document.getElementById('selectorAvatarGrid');
+        grid.innerHTML = AVATAR_OPCIONES.map((op, i) => `
+            <div class="avatar-celda ${op.clase} ${_avatarIconoActual && _avatarIconoActual.emoji === op.emoji ? 'seleccionado' : ''}"
+                 onclick="elegirAvatar(${i})">
+                <div class="avatar-escena ${op.escena}">${construirEscenaHTML(op)}</div>
+                <span class="avatar-nombre">${op.nombre}</span>
+            </div>
+        `).join('');
+        document.getElementById('selectorAvatarOverlay').classList.add('visible');
+    }
+
+    function ocultarSelectorAvatar() {
+        document.getElementById('selectorAvatarOverlay').classList.remove('visible');
+    }
+
+    async function elegirAvatar(indice) {
+        const opcion = AVATAR_OPCIONES[indice];
+        if (!opcion) return;
+        _avatarIconoActual = opcion;
+        renderizarAvatarMiCuenta(document.getElementById('cliente').value.trim());
+        ocultarSelectorAvatar();
+        await guardarAvatarIconoEnLaNube(opcion);
+        mostrarToast('✅ Avatar actualizado');
+    }
+
+    async function restaurarFotoGoogle() {
+        _avatarIconoActual = null;
+        renderizarAvatarMiCuenta(document.getElementById('cliente').value.trim());
+        ocultarSelectorAvatar();
+        await guardarAvatarIconoEnLaNube(null);
+        mostrarToast('✅ Volviste a tu foto de Google');
+    }
+
+    async function guardarAvatarIconoEnLaNube(opcion) {
         try {
-            localStorage.setItem('googleSesion', JSON.stringify({ nombre: datos.name, correo: datos.email || null, foto: datos.picture || null }));
+            const nombre = document.getElementById('cliente').value.trim();
+            const telefono = document.getElementById('telefonoCliente').value.trim();
+            if (!nombre || !telefono) return;
+            const key = getClienteKey(nombre, telefono);
+            await fetch(`${FIREBASE_URL}/db/clientes/${encodeURIComponent(key)}/avatarIcono.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(opcion)
+            });
         } catch (e) {}
-        cerrarAccesoInicial();
+    }
+
+
+    function manejarErrorLoginGoogle(error) {
+        console.error('Error de login con Google:', error);
+        if (error && error.code === 'auth/popup-closed-by-user') return;
+        const codigo = (error && error.code) ? ` (${error.code})` : '';
+        mostrarAviso(`No se pudo iniciar sesión con Google${codigo}. Intentá de nuevo.`, '⚠️');
+    }
+
+    function guardarSesionEnLocalStorage(user) {
+        try {
+            localStorage.setItem('googleSesion', JSON.stringify({
+                nombre: user.displayName,
+                correo: user.email || null,
+                foto: user.photoURL || null
+            }));
+        } catch (e) {}
     }
 
     function aplicarSesionGoogle(nombre, correo, foto) {
@@ -5391,7 +5706,7 @@
             localStorage.removeItem('miCentroImpresion_telefonoCliente');
             localStorage.removeItem('miCentroImpresion_accesoCompletado');
         } catch (e) {}
-        location.reload();
+        firebaseAuth.signOut().finally(() => location.reload());
     }
 
     // Cierra la pantalla de acceso obligatorio (ya sea porque inició con
@@ -5586,17 +5901,7 @@
         document.getElementById('mcNombre').textContent = nombre;
         document.getElementById('mcCorreo').textContent = _correoGoogleVerificado || '';
         document.getElementById('mcTelefonoInput').value = telefono;
-        const fotoEl = document.getElementById('mcFoto');
-        const fotoFallback = document.getElementById('mcFotoFallback');
-        if (_fotoGoogleVerificada) {
-            fotoEl.src = _fotoGoogleVerificada;
-            fotoEl.style.display = 'block';
-            fotoFallback.style.display = 'none';
-        } else {
-            fotoEl.style.display = 'none';
-            fotoFallback.style.display = 'flex';
-            fotoFallback.textContent = tcInicial(nombre);
-        }
+        renderizarAvatarMiCuenta(nombre);
 
         document.getElementById('mcHistorialLista').innerHTML = '<div class="tc-historial-vacio cargando">Cargando...</div>';
 
@@ -5605,6 +5910,8 @@
             const key = getClienteKey(nombre, telefono);
             const cliente = (db.clientes && db.clientes[key]) || {};
             document.getElementById('mcNotifCheck').checked = (cliente.notificacionesActivas !== false);
+            _avatarIconoActual = cliente.avatarIcono || null;
+            renderizarAvatarMiCuenta(nombre);
 
             // Limpieza automática: los comprobantes de más de 7 días se
             // borran solos (no hace falta que el cliente los borre a mano).
@@ -5758,7 +6065,7 @@
             const existente = db.clientes && db.clientes[key];
             if (existente) {
                 if (correoGoogle && !existente.correoGoogle) {
-                    await fetch(`${FIREBASE_URL}/clientes/${encodeURIComponent(key)}/correoGoogle.json`, {
+                    await fetch(`${FIREBASE_URL}/db/clientes/${encodeURIComponent(key)}/correoGoogle.json`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(correoGoogle)
@@ -5766,7 +6073,7 @@
                 }
                 return;
             }
-            await fetch(`${FIREBASE_URL}/clientes/${encodeURIComponent(key)}.json`, {
+            await fetch(`${FIREBASE_URL}/db/clientes/${encodeURIComponent(key)}.json`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pedidos: 0, credito: 0, correoGoogle: correoGoogle || null })
@@ -5791,10 +6098,12 @@
             return;
         }
 
+        const telefonoAnterior = document.getElementById('telefonoCliente').value.trim();
+
         document.getElementById('telefonoCliente').value = telefono;
         try { localStorage.setItem('miCentroImpresion_telefonoCliente', telefono); } catch (e) {}
         bloquearCampoTelefono();
-        guardarIdentidadPorCorreo(document.getElementById('cliente').value.trim(), telefono);
+        guardarIdentidadPorCorreo(nombreActual, telefono);
 
         try {
             const guardada = JSON.parse(localStorage.getItem('googleSesion') || '{}');
@@ -5807,45 +6116,134 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(telefono)
             });
+
+            if (telefonoAnterior && normalizarTelefono(telefonoAnterior) !== normalizarTelefono(telefono)) {
+                // Ya tenía cuenta con un teléfono distinto: hay que MOVER
+                // (o fusionar) su registro real, no crear uno nuevo vacío.
+                await migrarClienteACambioDeTelefono(nombreActual, telefonoAnterior, telefono);
+            } else {
+                // Primera vez que vincula teléfono, no hay nada que migrar.
+                registrarClienteSiNoExiste(nombreActual, telefono, _correoGoogleVerificado);
+            }
+
             avisoEl.className = 'mc-telefono-aviso ok';
             avisoEl.textContent = '✓ Teléfono vinculado a tu cuenta de Google.';
-            registrarClienteSiNoExiste(document.getElementById('cliente').value.trim(), telefono, _correoGoogleVerificado);
         } catch (e) {
             avisoEl.className = 'mc-telefono-aviso error';
             avisoEl.textContent = 'No se pudo vincular. Intentá de nuevo.';
         }
     }
 
+    // Mueve el registro real del cliente (crédito, pedidos, historial) de su
+    // teléfono viejo al nuevo. Si el teléfono nuevo ya existía como un
+    // registro suelto sin dueño, fusiona ambos en vez de perder el crédito.
+    async function migrarClienteACambioDeTelefono(nombre, telefonoViejo, telefonoNuevo) {
+        try {
+            const keyVieja = getClienteKey(nombre, telefonoViejo);
+            const keyNueva = getClienteKey(nombre, telefonoNuevo);
+            if (keyVieja === keyNueva) return;
+
+            const res = await fetch(`${FIREBASE_URL}/db.json`);
+            const record = await res.json();
+            const pedidosNube = (record && record.pedidos) || [];
+            const clientesNube = (record && record.clientes) || {};
+
+            if (clientesNube[keyVieja] && !clientesNube[keyNueva]) {
+                clientesNube[keyNueva] = clientesNube[keyVieja];
+                delete clientesNube[keyVieja];
+            } else if (clientesNube[keyVieja] && clientesNube[keyNueva] && !clientesNube[keyNueva].correoGoogle) {
+                const propio = clientesNube[keyVieja];
+                const huerfano = clientesNube[keyNueva];
+                clientesNube[keyNueva] = {
+                    ...huerfano,
+                    ...propio,
+                    credito: (propio.credito || 0) + (huerfano.credito || 0),
+                    pedidos: (propio.pedidos || 0) + (huerfano.pedidos || 0)
+                };
+                delete clientesNube[keyVieja];
+            } else if (!clientesNube[keyVieja]) {
+                return; // no había nada que migrar
+            }
+
+            pedidosNube.forEach(p => {
+                if (getClienteKey(p.cliente, p.telefono) === keyVieja) {
+                    p.telefono = telefonoNuevo;
+                }
+            });
+
+            await fetch(`${FIREBASE_URL}/db.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pedidos: pedidosNube, clientes: clientesNube })
+            });
+
+            // El token de dispositivo confiable también vive bajo la clave
+            // vieja — se mueve para no perder el "reconocimiento" del
+            // celular al transferir crédito.
+            const tokenViejo = localStorage.getItem('miCentroImpresion_dispositivoToken_' + keyVieja);
+            if (tokenViejo) {
+                localStorage.setItem('miCentroImpresion_dispositivoToken_' + keyNueva, tokenViejo);
+                localStorage.removeItem('miCentroImpresion_dispositivoToken_' + keyVieja);
+            }
+        } catch (e) {}
+    }
+
+    // El ID de cliente web que Firebase generó para este proyecto (visible
+    // en Authentication → Método de acceso → Google → "ID de cliente web").
+    // Tiene que ser este mismo, o Firebase no va a poder verificar el
+    // token que entrega Google.
+    const GOOGLE_CLIENT_ID_WEB = '503835083200-c4m5ngllle9gj2t0tf2fe1eit8nvc5mp.apps.googleusercontent.com';
+
     function renderizarBotonGoogle() {
         if (!window.google || !google.accounts || !google.accounts.id) {
             setTimeout(renderizarBotonGoogle, 300);
             return;
         }
-        google.accounts.id.initialize({
-            client_id: '695289740574-9s37cki5f12rbidr1s694unpj9msef0s.apps.googleusercontent.com',
-            callback: manejarRespuestaGoogle
-        });
         const gateContainer = document.getElementById('gateGoogleBtnContainer');
-        if (gateContainer) {
-            gateContainer.innerHTML = '';
-            google.accounts.id.renderButton(
-                gateContainer,
-                { theme: 'filled_blue', size: 'large', text: 'continue_with', shape: 'pill', width: 280 }
-            );
+        if (!gateContainer) return;
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID_WEB,
+            callback: manejarCredencialGoogle
+        });
+        gateContainer.innerHTML = '';
+        google.accounts.id.renderButton(
+            gateContainer,
+            { theme: 'filled_blue', size: 'large', text: 'continue_with', shape: 'pill', width: 280 }
+        );
+    }
+
+    // Google ya entregó un token firmado (sin salir de la página, sin
+    // redirección — por eso no se pierde nada en el camino). Ahora se lo
+    // pasamos a Firebase para que lo verifique de verdad contra Google
+    // antes de confiar en él.
+    async function manejarCredencialGoogle(respuesta) {
+        try {
+            const credencial = firebase.auth.GoogleAuthProvider.credential(respuesta.credential);
+            const resultado = await firebaseAuth.signInWithCredential(credencial);
+            const user = resultado.user;
+            if (!user) return;
+            aplicarSesionGoogle(user.displayName, user.email || null, user.photoURL || null);
+            guardarSesionEnLocalStorage(user);
+            cerrarAccesoInicial();
+        } catch (error) {
+            manejarErrorLoginGoogle(error);
         }
     }
 
     function inicializarGoogleSignIn() {
-        // Si ya había una sesión guardada de una vez anterior, la aplicamos
-        // directo sin pedirle que vuelva a tocar el botón.
-        try {
-            const guardada = JSON.parse(localStorage.getItem('googleSesion') || 'null');
-            if (guardada && guardada.nombre) {
-                aplicarSesionGoogle(guardada.nombre, guardada.correo || null, guardada.foto || null);
-                return;
+        // Firebase Auth es la fuente de verdad sobre si ya hay sesión
+        // guardada de una vez anterior (no hace falta redirección para
+        // esto, Firebase la recuerda solo).
+        firebaseAuth.onAuthStateChanged(user => {
+            if (user) {
+                aplicarSesionGoogle(user.displayName, user.email || null, user.photoURL || null);
+                guardarSesionEnLocalStorage(user);
+                cerrarAccesoInicial();
+            } else {
+                renderizarBotonGoogle();
+                document.getElementById('accesoInicialOverlay').classList.add('visible');
             }
-        } catch (e) {}
-        renderizarBotonGoogle();
+        });
     }
     inicializarGoogleSignIn();
 
